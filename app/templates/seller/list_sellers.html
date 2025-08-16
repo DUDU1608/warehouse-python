@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seller List</title>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f2f6fc;
+        }
+        .table-container {
+            margin: 50px auto;
+            width: 95%;
+        }
+        .table thead {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .back-button {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="table-container">
+        <h2 class="text-center mb-4">Seller List</h2>
+        <table class="table table-bordered table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Mobile</th>
+                    <th>Address</th>
+                    <th>Banking Name</th>
+                    <th>Account No.</th>
+                    <th>IFSC</th>
+                    <th>Bank Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for seller in sellers %}
+                <tr id="row-{{ seller.id }}">
+                    <form method="POST" action="/seller/update-inline/{{ seller.id }}">
+                        <td><span class="text">{{ seller.name }}</span><input type="text" name="name" class="form-control d-none" value="{{ seller.name }}"></td>
+                        <td><span class="text">{{ seller.mobile }}</span><input type="text" name="mobile" class="form-control d-none" value="{{ seller.mobile }}"></td>
+                        <td><span class="text">{{ seller.address }}</span><input type="text" name="address" class="form-control d-none" value="{{ seller.address }}"></td>
+                        <td><span class="text">{{ seller.banking_name }}</span><input type="text" name="banking_name" class="form-control d-none" value="{{ seller.banking_name }}"></td>
+                        <td><span class="text">{{ seller.account_number }}</span><input type="text" name="account_number" class="form-control d-none" value="{{ seller.account_number }}"></td>
+                        <td><span class="text">{{ seller.ifsc_code }}</span><input type="text" name="ifsc_code" class="form-control d-none" value="{{ seller.ifsc_code }}"></td>
+                        <td><span class="text">{{ seller.bank_name }}</span><input type="text" name="bank_name" class="form-control d-none" value="{{ seller.bank_name }}"></td>
+                        <td class="text-nowrap">
+                            <button type="button" class="btn btn-sm btn-warning edit-btn" data-id="{{ seller.id }}">Edit</button>
+                            <button type="submit" class="btn btn-sm btn-success d-none save-btn" data-id="{{ seller.id }}">Save</button>
+                            <a href="/seller/delete/{{ seller.id }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this seller?');">Delete</a>
+                        </td>
+                    </form>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="back-button">
+            <a href="/seller/dashboard" class="btn btn-outline-secondary">← Back to Seller Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        const editButtons = document.querySelectorAll('.edit-btn');
+        editButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const rowId = btn.getAttribute('data-id');
+                const row = document.querySelector(`#row-${rowId}`);
+                row.querySelectorAll('span.text').forEach(el => el.classList.add('d-none'));
+                row.querySelectorAll('input').forEach(el => el.classList.remove('d-none'));
+                row.querySelector('.save-btn').classList.remove('d-none');
+                btn.classList.add('d-none');
+            });
+        });
+    </script>
+</body>
+</html>

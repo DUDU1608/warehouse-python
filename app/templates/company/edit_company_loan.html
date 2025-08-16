@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Company Loan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { max-width: 520px; margin-top: 48px; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px #e1e7f0; padding: 30px 34px;}
+        .form-label { font-weight: 500; }
+        h3 { color: #0a3871; font-weight: 600; margin-bottom: 26px; text-align: center; }
+        .btn-primary { min-width: 130px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h3>Edit Company Loan</h3>
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input type="date" name="date" class="form-control" value="{{ loan.date.strftime('%Y-%m-%d') if loan.date else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Loan Amount</label>
+            <input type="number" name="loan_amount" step="0.01" class="form-control" value="{{ loan.loan_amount or '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Processing Fee</label>
+            <input type="number" name="processing_fee" step="0.01" class="form-control" value="{{ loan.processing_fee or '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">GST (%)</label>
+            <input type="number" name="gst" step="0.01" class="form-control" value="{{ loan.gst or '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Total Processing Fee</label>
+            <input type="number" name="total_processing_fee" step="0.01" class="form-control" value="{{ loan.total_processing_fee or '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Total Disbursement</label>
+            <input type="number" name="total_disbursement" step="0.01" class="form-control" value="{{ loan.total_disbursement or '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Interest Rate (%)</label>
+            <input type="number" name="interest_rate" step="0.01" class="form-control" value="{{ loan.interest_rate or '' }}" required>
+        </div>
+        <div class="d-flex justify-content-between">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ url_for('companyloan.list_company_loans') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

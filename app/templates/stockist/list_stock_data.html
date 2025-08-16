@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Data Records</title>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { margin-top: 36px; }
+        .table-responsive { box-shadow: 0 2px 20px #dbe7f8a8; border-radius: 10px; background: #fff; }
+        .btn-back { margin-top: 28px; font-weight: 500; }
+        .display-6 { color: #10356b; font-weight: 600; letter-spacing: .7px; }
+        .actions button, .actions form { display: inline-block; margin-right: 4px; }
+        @media print {
+            body { font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #333 !important; padding: 2px 4px !important; }
+            th { background: #eee !important; }
+            .no-print, .no-print * { display: none !important; }
+            .table-responsive { box-shadow: none; background: none; }
+        }
+        @page { size: A4 landscape; margin: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="mb-4 display-6 text-center">Stock Data Records</h2>
+
+    <!-- Filter Form -->
+    <form class="row g-2 mb-4 no-print" method="get">
+        <div class="col-md-2">
+            <label>Start Date</label>
+            <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}">
+        </div>
+        <div class="col-md-2">
+            <label>End Date</label>
+            <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}">
+        </div>
+        <div class="col-md-2">
+            <label>Stockist Name</label>
+            <select name="stockist_name" class="form-control">
+                <option value="">All</option>
+                {% for n in stockist_names %}
+                <option value="{{ n }}" {% if request.args.get('stockist_name') == n %}selected{% endif %}>{{ n }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label>Warehouse</label>
+            <select name="warehouse" class="form-control">
+                <option value="">All</option>
+                {% for w in warehouses %}
+                <option value="{{ w }}" {% if request.args.get('warehouse') == w %}selected{% endif %}>{{ w }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label>Commodity</label>
+            <select name="commodity" class="form-control">
+                <option value="">All</option>
+                <option value="Wheat" {% if request.args.get('commodity') == 'Wheat' %}selected{% endif %}>Wheat</option>
+                <option value="Maize" {% if request.args.get('commodity') == 'Maize' %}selected{% endif %}>Maize</option>
+                <option value="Paddy" {% if request.args.get('commodity') == 'Paddy' %}selected{% endif %}>Paddy</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label>Quality</label>
+            <select name="quality" class="form-control">
+                <option value="">All</option>
+                <option value="Good" {% if request.args.get('quality') == 'Good' %}selected{% endif %}>Good</option>
+                <option value="BD" {% if request.args.get('quality') == 'BD' %}selected{% endif %}>BD</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label>Kind of Stock</label>
+            <select name="kind_of_stock" class="form-control">
+                <option value="">All</option>
+                <option value="self" {% if request.args.get('kind_of_stock') == 'self' %}selected{% endif %}>self</option>
+                <option value="transferred" {% if request.args.get('kind_of_stock') == 'transferred' %}selected{% endif %}>transferred</option>
+            </select>
+        </div>
+        <div class="col-md-12 mt-3">
+            <button class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('stockdata.display_stock_data') }}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+
+    <!-- Export/Import Buttons -->
+    <div class="mb-3 no-print">
+        <form method="POST" action="{{ url_for('stockdata.import_stockdata_excel') }}" enctype="multipart/form-data" class="d-inline-block">
+            <input type="file" name="file" required>
+            <button class="btn btn-outline-secondary btn-sm">Import Excel</button>
+        </form>
+        <a href="{{ url_for('stockdata.export_stockdata_excel', **request.args) }}" class="btn btn-outline-success btn-sm">Export Excel</a>
+        <a href="{{ url_for('stockdata.export_stockdata_pdf') }}" class="btn btn-danger btn-sm">Export PDF</a>
+        <a href="/stockist/dashboard" class="btn btn-outline-dark btn-sm float-end">← Back to Dashboard</a>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive mb-3">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>RST No</th>
+                    <th>Warehouse</th>
+                    <th>Stockist Name</th>
+                    <th>Mobile</th>
+                    <th>Commodity</th>
+                    <th>Quantity</th>
+                    <th>Reduction</th>
+                    <th>Net Qty</th>
+                    <th>Rate</th>
+                    <th>Cost</th>
+                    <th>Handling</th>
+                    <th>Net Cost</th>
+                    <th>Quality</th>
+                    <th>Kind of Stock</th>
+                    <th class="no-print">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+{% for s in stocks %}
+<tr>
+    <td>{{ s.date }}</td>
+    <td>{{ s.rst_no }}</td>
+    <td>{{ s.warehouse }}</td>
+    <td>{{ s.stockist_name }}</td>
+    <td>{{ s.mobile }}</td>
+    <td>{{ s.commodity }}</td>
+    <td>{{ s.quantity }}</td>
+    <td>{{ s.reduction }}</td>
+    <td>{{ s.net_qty }}</td>
+    <td>{{ s.rate }}</td>
+    <td>{{ s.cost }}</td>
+    <td>{{ s.handling }}</td>
+    <td>{{ s.net_cost }}</td>
+    <td>{{ s.quality }}</td>
+    <td>{{ s.kind_of_stock }}</td>
+    <td>
+        {% if not for_pdf %}
+            <a href="{{ url_for('stockdata.edit_stock_data', stockdata_id=s.id) }}" class="btn btn-sm btn-primary">Edit</a>
+            <form method="POST" action="{{ url_for('stockdata.delete_stock_data', stockdata_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this entry?');">
+                <button class="btn btn-sm btn-danger">Delete</button>
+            </form>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+</tbody>
+
+        </table>
+    </div>
+</div>
+</body>
+</html>
+

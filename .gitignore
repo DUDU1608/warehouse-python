@@ -1,0 +1,29 @@
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Env / secrets
+.env
+*.env
+
+# Flask local stuff
+instance/*
+!instance/.gitkeep
+
+# DB files (old SQLite)
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Alembic cache
+migrations/**/__pycache__/

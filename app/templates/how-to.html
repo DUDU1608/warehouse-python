@@ -1,0 +1,279 @@
+<!-- File: templates/how-to.html -->
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <title>📖 उपयोगकर्ता गाइड | Warehouse App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <style>
+    body { background:#f6f8fb; }
+    .container-narrow { max-width: 1000px; }
+    .card-soft { background:#fff; border-radius:14px; box-shadow:0 6px 20px rgba(0,0,0,.06); }
+    .muted { color:#6c757d; }
+    .lang-toggle .btn { min-width: 120px; }
+    .section h5 { color:#0a3871; }
+    .toc a { text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="container container-narrow py-4">
+
+    <!-- Header + Language Toggle -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h2 class="mb-0">📖 उपयोगकर्ता गाइड</h2>
+        <div class="muted">वेयरहाउस मैनेजमेंट ऐप</div>
+      </div>
+      <div class="lang-toggle btn-group" role="group" aria-label="Language toggle">
+        <button id="btnHi" type="button" class="btn btn-primary">हिन्दी</button>
+        <button id="btnEn" type="button" class="btn btn-outline-primary">English</button>
+      </div>
+    </div>
+
+    <!-- ===== Hindi (Default) ===== -->
+    <div id="guide-hi" class="card-soft p-3">
+      <div class="d-flex justify-content-end">
+        <!-- FAQ Button -->
+        <a href="/faq" class="btn btn-warning btn-sm">❓ FAQ देखें</a>
+      </div>
+
+      <!-- TOC -->
+      <div class="toc mt-2 mb-3">
+        <div class="alert alert-light border">
+          <b>विषय सूची:</b>
+          <ol class="mb-0">
+            <li><a href="#hi-intro">परिचय</a></li>
+            <li><a href="#hi-login">लॉगिन</a></li>
+            <li><a href="#hi-dashboard">डैशबोर्ड</a></li>
+            <li><a href="#hi-seller">सेलर मॉड्यूल</a></li>
+            <li><a href="#hi-stockist">स्टॉकिस्ट मॉड्यूल</a></li>
+            <li><a href="#hi-buyer">बायर मॉड्यूल</a></li>
+            <li><a href="#hi-stock-summary">स्टॉक सारांश</a></li>
+            <li><a href="#hi-final-report">फाइनल रिपोर्ट</a></li>
+            <li><a href="#hi-income-expense">आय/व्यय (सरल)</a></li>
+            <li><a href="#hi-definitions">विशेष परिभाषाएं</a></li>
+            <li><a href="#hi-tips">टिप्स</a></li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div id="hi-intro" class="section mb-4">
+        <h5>1) परिचय</h5>
+        <p>यह ऐप वेयरहाउस के सभी कार्य जैसे विक्रेता/खरीदार/स्टॉकिस्ट का रिकॉर्ड, खरीद, भुगतान, स्टॉक प्रवेश/निकासी, सारांश और वित्तीय रिपोर्ट को सरल बनाता है। इंटरफेस हिन्दी (डिफ़ॉल्ट) और अंग्रेज़ी दोनों में उपलब्ध है।</p>
+      </div>
+
+      <div id="hi-login" class="section mb-4">
+        <h5>2) लॉगिन</h5>
+        <ul>
+          <li><b>एडमिन लॉगिन:</b> मोबाइल: <code>admin</code>, पासवर्ड: <code>password</code></li>
+          <li><b>यूजर लॉगिन:</b> अपने रजिस्टर्ड मोबाइल नंबर से OTP द्वारा सत्यापन</li>
+          <li><b>रोल-आधारित एक्सेस:</b> यूजर अपने रोल के अनुसार मॉड्यूल/डेटा देखता है</li>
+        </ul>
+      </div>
+
+      <div id="hi-dashboard" class="section mb-4">
+        <h5>3) डैशबोर्ड</h5>
+        <p>लॉगिन के बाद आपके रोल के अनुसार मॉड्यूल दिखते हैं: सेलर, बायर, स्टॉकिस्ट, स्टॉक समरी, फाइनल रिपोर्ट, आय/व्यय।</p>
+      </div>
+
+      <div id="hi-seller" class="section mb-4">
+        <h5>4) सेलर मॉड्यूल</h5>
+        <ul>
+          <li><b>सेलर जोड़ें:</b> नाम, मोबाइल, पता, बैंक विवरण</li>
+          <li><b>खरीद जोड़ें:</b> वेयरहाउस, सेलर, कमोडिटी (गेहूं/मक्का/धान), मात्रा, रिडक्शन, रेट; नेट मात्रा/कुल लागत स्वतः</li>
+          <li><b>भुगतान जोड़ें:</b> राशि व रेफरेंस; देय राशि ऑटो-अपडेट</li>
+          <li><b>देय राशि देखें:</b> खरीद − भुगतान</li>
+          <li><b>एक्सपोर्ट/इम्पोर्ट:</b> PDF/Excel; (एडमिन) Excel इम्पोर्ट</li>
+          <li><b>इनलाइन एडिट/डिलीट:</b> रिकॉर्ड पर सीधे संपादन/हटाना</li>
+        </ul>
+      </div>
+
+      <div id="hi-stockist" class="section mb-4">
+        <h5>5) स्टॉकिस्ट मॉड्यूल</h5>
+        <ul>
+          <li><b>मेरा स्टोरेज:</b> वेयरहाउस/कमोडिटी-वाइज स्टॉक (MT)</li>
+          <li><b>लोन:</b> कैश लोन, मार्जिन लोन का सारांश</li>
+          <li><b>मार्जिन भुगतान:</b> कुल मार्जिन भुगतान</li>
+          <li><b>स्टॉक निकासी:</b> RST आधारित एग्जिट; नेट स्टॉक की गणना</li>
+        </ul>
+      </div>
+
+      <div id="hi-buyer" class="section mb-4">
+        <h5>6) बायर मॉड्यूल</h5>
+        <p>खरीदार और उनकी खरीद/भुगतान का रिकॉर्ड। (एडमिन जोड़/संपादित कर सकता है)</p>
+      </div>
+
+      <div id="hi-stock-summary" class="section mb-4">
+        <h5>7) स्टॉक सारांश</h5>
+        <p><b>शुद्ध स्टॉक =</b> प्रवेश − निकासी। गेहूं/मक्का/धान के लिए अलग-अलग दर्शाया जाता है, वेयरहाउस के अनुसार फिल्टर उपलब्ध।</p>
+      </div>
+
+      <div id="hi-final-report" class="section mb-4">
+        <h5>8) फाइनल रिपोर्ट</h5>
+        <ul>
+          <li><b>वेयरहाउसिंग:</b> किराया (3.34 रुपये प्रति टन प्रतिदिन की दर से) — चुनी तिथि तक</li>
+          <li><b>फाइनेंसिंग:</b> (कैश+मार्जिन लोन − मार्जिन पेड) पर 13.75% वार्षिक ब्याज, दैनिक आधार पर समेकित</li>
+          <li><b>ट्रेडिंग:</b> (आगे जोड़ा जाएगा)</li>
+          <li><b>अदर इनकम/एक्सपेंस:</b> अन्य अर्जन/खर्च</li>
+        </ul>
+      </div>
+
+
+      <div id="hi-definitions" class="section mb-4">
+        <h5>10) विशेष परिभाषाएं</h5>
+        <ul>
+          <li><b>Self Storage:</b> स्टॉक गोदाम में है, मालिकाना हक स्टॉकिस्ट का</li>
+          <li><b>Company Purchase:</b> कंपनी द्वारा खरीदा गया स्टॉक जो <u>स्टॉकिस्ट के अनुरोध पर बाद में उन्हें ट्रांसफर</u> किया गया</li>
+        </ul>
+      </div>
+
+      <div id="hi-tips" class="section mb-1">
+        <h5>11) टिप्स</h5>
+        <ul>
+          <li>एक्सपोर्ट से पहले फिल्टर जाँचें</li>
+          <li>मोबाइल नंबर अपडेट रखें (यही लॉगिन आईडी है)</li>
+          <li>इंटरनेट कनेक्शन आवश्यक</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ===== English ===== -->
+    <div id="guide-en" class="card-soft p-3" style="display:none;">
+      <div class="d-flex justify-content-end">
+        <a href="/faq" class="btn btn-warning btn-sm">❓ View FAQ</a>
+      </div>
+
+      <div class="toc mt-2 mb-3">
+        <div class="alert alert-light border">
+          <b>Table of Contents:</b>
+          <ol class="mb-0">
+            <li><a href="#en-intro">Introduction</a></li>
+            <li><a href="#en-login">Login</a></li>
+            <li><a href="#en-dashboard">Dashboard</a></li>
+            <li><a href="#en-seller">Seller Module</a></li>
+            <li><a href="#en-stockist">Stockist Module</a></li>
+            <li><a href="#en-buyer">Buyer Module</a></li>
+            <li><a href="#en-stock-summary">Stock Summary</a></li>
+            <li><a href="#en-final-report">Final Report</a></li>
+            <li><a href="#en-income-expense">Income/Expenditure (Simple)</a></li>
+            <li><a href="#en-definitions">Key Definitions</a></li>
+            <li><a href="#en-tips">Tips</a></li>
+          </ol>
+        </div>
+      </div>
+
+      <div id="en-intro" class="section mb-4">
+        <h5>1) Introduction</h5>
+        <p>This app streamlines warehouse operations: seller/buyer/stockist records, purchases, payments, stock in/out, summaries, and financial reports. Interface available in Hindi (default) and English.</p>
+      </div>
+
+      <div id="en-login" class="section mb-4">
+        <h5>2) Login</h5>
+        <ul>
+          <li><b>Admin:</b> Mobile <code>admin</code>, password <code>password</code></li>
+          <li><b>User:</b> Registered mobile with OTP verification</li>
+          <li><b>Role-based access:</b> Modules and data are shown per user role</li>
+        </ul>
+      </div>
+
+      <div id="en-dashboard" class="section mb-4">
+        <h5>3) Dashboard</h5>
+        <p>After login, modules appear as per role: Seller, Buyer, Stockist, Stock Summary, Final Report, Income/Expenditure.</p>
+      </div>
+
+      <div id="en-seller" class="section mb-4">
+        <h5>4) Seller Module</h5>
+        <ul>
+          <li><b>Add Seller:</b> Name, mobile, address, bank</li>
+          <li><b>Add Purchase:</b> Warehouse, seller, commodity (Wheat/Maize/Paddy), qty, reduction, rate; net qty/total cost auto-calculated</li>
+          <li><b>Add Payment:</b> Amount & reference; due updates automatically</li>
+          <li><b>Payment Due:</b> Purchases − Payments</li>
+          <li><b>Export/Import:</b> PDF/Excel; (Admin) Excel import</li>
+          <li><b>Inline Edit/Delete:</b> edit/delete directly on the table</li>
+        </ul>
+      </div>
+
+      <div id="en-stockist" class="section mb-4">
+        <h5>5) Stockist Module</h5>
+        <ul>
+          <li><b>My Storage:</b> Warehouse/commodity-wise stock (MT)</li>
+          <li><b>Loans:</b> Summary of Cash Loan & Margin Loan</li>
+          <li><b>Margin Paid:</b> Total margin paid</li>
+          <li><b>Stock Exits:</b> RST-based exits; net stock computed</li>
+        </ul>
+      </div>
+
+      <div id="en-buyer" class="section mb-4">
+        <h5>6) Buyer Module</h5>
+        <p>Records for buyers and their purchases/payments. (Admin can add/edit)</p>
+      </div>
+
+      <div id="en-stock-summary" class="section mb-4">
+        <h5>7) Stock Summary</h5>
+        <p><b>Net Stock =</b> Entries − Exits. Displayed separately for Wheat/Maize/Paddy, with warehouse filters.</p>
+      </div>
+
+      <div id="en-final-report" class="section mb-4">
+        <h5>8) Final Report</h5>
+        <ul>
+          <li><b>Warehousing:</b> Rental (At the rate of Rs 3.34 per day per MT) — up to selected date</li>
+          <li><b>Financing:</b> Interest at 13.75% p.a. on (cash + margin loans − margin paid), summed daily</li>
+          <li><b>Trading:</b> (to be added)</li>
+          <li><b>Other Income/Expense:</b> miscellaneous</li>
+        </ul>
+      </div>
+
+      <div id="en-definitions" class="section mb-4">
+        <h5>10) Key Definitions</h5>
+        <ul>
+          <li><b>Self Storage:</b> Stored in warehouse; ownership with stockist</li>
+          <li><b>Company Purchase:</b> Purchased by company and <u>later transferred to the stockist on their request</u></li>
+        </ul>
+      </div>
+
+      <div id="en-tips" class="section mb-1">
+        <h5>11) Tips</h5>
+        <ul>
+          <li>Verify filters before exporting</li>
+          <li>Keep your mobile number updated (used as login)</li>
+          <li>Internet connection is required</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const hi = document.getElementById('guide-hi');
+    const en = document.getElementById('guide-en');
+    const btnHi = document.getElementById('btnHi');
+    const btnEn = document.getElementById('btnEn');
+
+    function setLang(lang) {
+      const useHi = lang === 'hi';
+      hi.style.display = useHi ? '' : 'none';
+      en.style.display = useHi ? 'none' : '';
+      btnHi.classList.toggle('btn-primary', useHi);
+      btnHi.classList.toggle('btn-outline-primary', !useHi);
+      btnEn.classList.toggle('btn-primary', !useHi);
+      btnEn.classList.toggle('btn-outline-primary', useHi);
+      document.documentElement.setAttribute('lang', useHi ? 'hi' : 'en');
+      localStorage.setItem('howto_lang', useHi ? 'hi' : 'en');
+    }
+
+    btnHi.addEventListener('click', () => setLang('hi'));
+    btnEn.addEventListener('click', () => setLang('en'));
+
+    // Initialize from localStorage (default Hindi)
+    const saved = localStorage.getItem('howto_lang') || 'hi';
+    setLang(saved);
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,454 @@
+<!-- File: templates/faq.html -->
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <title>FAQ | वेयरहाउस मैनेजमेंट ऐप</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+  <style>
+    body { background: #f6f8fb; }
+    .container-narrow { max-width: 960px; }
+    .lang-toggle .btn { min-width: 120px; }
+    .card-soft { background:#fff; border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.06); }
+    .muted { color:#6c757d; }
+  </style>
+</head>
+<body>
+  <div class="container container-narrow py-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h2 class="mb-0">सामान्य प्रश्न (FAQ)</h2>
+        <div class="muted">वेयरहाउस मैनेजमेंट ऐप</div>
+      </div>
+      <div class="lang-toggle btn-group" role="group" aria-label="Language toggle">
+        <button id="btnHi" type="button" class="btn btn-primary">हिन्दी</button>
+        <button id="btnEn" type="button" class="btn btn-outline-primary">English</button>
+      </div>
+    </div>
+
+    <!-- HINDI (default) -->
+    <div id="faq-hi" class="card-soft p-3">
+      <div class="accordion" id="accHi">
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h1">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#c1" aria-expanded="true" aria-controls="c1">
+              1) यह ऐप किस काम आता है?
+            </button>
+          </h2>
+          <div id="c1" class="accordion-collapse collapse show" aria-labelledby="h1" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              यह ऐप गोदाम के सभी काम जैसे विक्रेता/खरीदार/स्टॉकिस्ट का रिकॉर्ड, खरीद, भुगतान, स्टॉक प्रवेश/निकासी, सारांश और रिपोर्ट को मैनेज करता है।
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h2">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c2" aria-controls="c2">
+              2) इस ऐप का उपयोग कौन कर सकता है?
+            </button>
+          </h2>
+          <div id="c2" class="accordion-collapse collapse" aria-labelledby="h2" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>एडमिन</b> — सभी रिकॉर्ड देख/जोड़/एडिट/डिलीट कर सकता है।</li>
+                <li><b>रजिस्टर्ड यूजर</b> — सिर्फ अपने मोबाइल नंबर से जुड़े डेटा को देख सकता है।</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h3">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c3" aria-controls="c3">
+              3) लॉगिन कैसे करें?
+            </button>
+          </h2>
+          <div id="c3" class="accordion-collapse collapse" aria-labelledby="h3" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>एडमिन</b>: admin मोबाइल/पासवर्ड से लॉगिन।</li>
+                <li><b>यूजर</b>: रजिस्टर्ड मोबाइल से OTP वेरिफिकेशन।</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h4">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c4" aria-controls="c4">
+              4) उपलब्ध मॉड्यूल कौन-कौन से हैं?
+            </button>
+          </h2>
+          <div id="c4" class="accordion-collapse collapse" aria-labelledby="h4" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>सेलर मॉड्यूल</b> — विक्रेता, खरीद, भुगतान, बकाया।</li>
+                <li><b>बायर मॉड्यूल</b> — खरीदार व उनकी खरीद।</li>
+                <li><b>स्टॉकिस्ट मॉड्यूल</b> — स्टोरेज, लोन, मार्जिन, स्टॉक निकासी।</li>
+                <li><b>स्टॉक सारांश</b> — वस्तु-वार स्टॉक।</li>
+                <li><b>फाइनल रिपोर्ट</b> — संयुक्त वित्तीय/स्टॉक रिपोर्ट।</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h5">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c5" aria-controls="c5">
+              5) भुगतान बकाया कैसे निकाला जाता है?
+            </button>
+          </h2>
+          <div id="c5" class="accordion-collapse collapse" aria-labelledby="h5" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              <b>भुगतान बकाया =</b> कुल खरीद लागत − किए गए भुगतान।
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h6">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c6" aria-controls="c6">
+              6) क्या मैं डेटा को फ़िल्टर कर सकता/सकती हूँ?
+            </button>
+          </h2>
+          <div id="c6" class="accordion-collapse collapse" aria-labelledby="h6" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              हाँ — तारीख, गोदाम, नाम, वस्तु और क्वालिटी के आधार पर फ़िल्टर कर सकते हैं।
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h7">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c7" aria-controls="c7">
+              7) क्या मैं डेटा एक्सपोर्ट कर सकता/सकती हूँ?
+            </button>
+          </h2>
+          <div id="c7" class="accordion-collapse collapse" aria-labelledby="h7" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              हाँ — Excel और PDF में एक्सपोर्ट। एडमिन Excel से इम्पोर्ट भी कर सकता है।
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h8">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c8" aria-controls="c8">
+              8) स्टॉक सारांश में स्टॉक कैसे निकाला जाता है?
+            </button>
+          </h2>
+          <div id="c8" class="accordion-collapse collapse" aria-labelledby="h8" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              <b>शुद्ध कुल स्टॉक =</b> प्रवेश − निकासी, गेहूं/मक्का/धान के लिए अलग-अलग दिखाया जाता है।
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h9">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c9" aria-controls="c9">
+              9) ‘स्वयं भंडारण’ और ‘कंपनी खरीद’ में अंतर?
+            </button>
+          </h2>
+          <div id="c9" class="accordion-collapse collapse" aria-labelledby="h9" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>स्वयं भंडारण</b>: स्टॉक गोदाम में है, मालिकाना हक स्टॉकिस्ट का।</li>
+                <li><b>कंपनी खरीद</b>: स्टॉक जिसे कंपनी ने खरीदा और <u>बाद में स्टॉकिस्ट को उनके अनुरोध पर ट्रांसफर</u> किया।</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h10">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c10" aria-controls="c10">
+              10) ‘लोन’ और ‘मार्जिन’ का मतलब?
+            </button>
+          </h2>
+          <div id="c10" class="accordion-collapse collapse" aria-labelledby="h10" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>कैश लोन</b>: रखे गए माल के बदले दिया गया लोन।</li>
+                <li><b>मार्जिन लोन</b>: जमा मार्जिन राशि के बदले दिया गया लोन।</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h11">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c11" aria-controls="c11">
+              11) क्या मैं एंट्री एडिट/डिलीट कर सकता/सकती हूँ?
+            </button>
+          </h2>
+          <div id="c11" class="accordion-collapse collapse" aria-labelledby="h11" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              एडमिन कर सकता है; यूजर सिर्फ देख सकता है।
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h12">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c12" aria-controls="c12">
+              12) क्या यह ऐप ऑफलाइन काम करता है?
+            </button>
+          </h2>
+          <div id="c12" class="accordion-collapse collapse" aria-labelledby="h12" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              नहीं, डेटा देखने/अपडेट के लिए इंटरनेट जरूरी है।
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="h13">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c13" aria-controls="c13">
+              13) समस्या कैसे रिपोर्ट करें?
+            </button>
+          </h2>
+          <div id="c13" class="accordion-collapse collapse" aria-labelledby="h13" data-bs-parent="#accHi">
+            <div class="accordion-body">
+              स्क्रीनशॉट, एरर विवरण और समस्या दोहराने के स्टेप्स एडमिन/सपोर्ट टीम को भेजें।
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ENGLISH -->
+    <div id="faq-en" class="card-soft p-3 mt-3" style="display:none;">
+      <div class="accordion" id="accEn">
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e1">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#ec1" aria-expanded="true" aria-controls="ec1">
+              1) What is this app used for?
+            </button>
+          </h2>
+          <div id="ec1" class="accordion-collapse collapse show" aria-labelledby="e1" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              It manages warehouse operations: seller/buyer/stockist records, purchases, payments, stock entries/exits, summaries, and reports.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e2">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec2" aria-controls="ec2">
+              2) Who can use this app?
+            </button>
+          </h2>
+          <div id="ec2" class="accordion-collapse collapse" aria-labelledby="e2" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>Admin</b> — Full CRUD on all records.</li>
+                <li><b>Registered Users</b> — Read their own mobile-linked data.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e3">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec3" aria-controls="ec3">
+              3) How do I log in?
+            </button>
+          </h2>
+          <div id="ec3" class="accordion-collapse collapse" aria-labelledby="e3" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>Admin</b>: admin mobile/password.</li>
+                <li><b>User</b>: registered mobile with OTP verification.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e4">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec4" aria-controls="ec4">
+              4) What modules are available?
+            </button>
+          </h2>
+          <div id="ec4" class="accordion-collapse collapse" aria-labelledby="e4" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>Seller Module</b> — Sellers, purchases, payments, dues.</li>
+                <li><b>Buyer Module</b> — Buyers and their purchases.</li>
+                <li><b>Stockist Module</b> — Storage, loans, margins, exits.</li>
+                <li><b>Stock Summary</b> — Commodity‑wise stock.</li>
+                <li><b>Final Report</b> — Combined financial & stock report.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e5">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec5" aria-controls="ec5">
+              5) How is payment due calculated?
+            </button>
+          </h2>
+          <div id="ec5" class="accordion-collapse collapse" aria-labelledby="e5" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              <b>Payment Due =</b> Total Purchase Cost − Payments Made.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e6">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec6" aria-controls="ec6">
+              6) Can I filter data?
+            </button>
+          </h2>
+          <div id="ec6" class="accordion-collapse collapse" aria-labelledby="e6" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              Yes — by date range, warehouse, name, commodity, and quality.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e7">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec7" aria-controls="ec7">
+              7) Can I export my data?
+            </button>
+          </h2>
+          <div id="ec7" class="accordion-collapse collapse" aria-labelledby="e7" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              Yes — export to Excel/PDF. Admins can also import from Excel.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e8">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec8" aria-controls="ec8">
+              8) How is stock calculated in Stock Summary?
+            </button>
+          </h2>
+          <div id="ec8" class="accordion-collapse collapse" aria-labelledby="e8" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              <b>Net Total Stock =</b> Entries − Exits; shown separately for Wheat, Maize, and Paddy.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e9">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec9" aria-controls="ec9">
+              9) Difference between ‘Self Storage’ and ‘Company Purchase’?
+            </button>
+          </h2>
+          <div id="ec9" class="accordion-collapse collapse" aria-labelledby="e9" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>Self Storage</b>: Stored in the warehouse; ownership remains with the stockist.</li>
+                <li><b>Company Purchase</b>: Stocks purchased by the company and later transferred to the stockist on their request.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e10">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec10" aria-controls="ec10">
+              10) What are ‘Loan’ and ‘Margin’?
+            </button>
+          </h2>
+          <div id="ec10" class="accordion-collapse collapse" aria-labelledby="e10" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              <ul class="mb-0">
+                <li><b>Cash Loan</b>: Given directly against stored goods.</li>
+                <li><b>Margin Loan</b>: Given against deposited margin money.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e11">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec11" aria-controls="ec11">
+              11) Can I edit or delete entries?
+            </button>
+          </h2>
+          <div id="ec11" class="accordion-collapse collapse" aria-labelledby="e11" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              Admins can edit/delete; users can view only.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e12">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec12" aria-controls="ec12">
+              12) Can the app work offline?
+            </button>
+          </h2>
+          <div id="ec12" class="accordion-collapse collapse" aria-labelledby="e12" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              No; internet is required to fetch and update data.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="e13">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ec13" aria-controls="ec13">
+              13) How do I report an issue?
+            </button>
+          </h2>
+          <div id="ec13" class="accordion-collapse collapse" aria-labelledby="e13" data-bs-parent="#accEn">
+            <div class="accordion-body">
+              Share a screenshot, error details, and reproduction steps with the admin/support team.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const hi = document.getElementById('faq-hi');
+    const en = document.getElementById('faq-en');
+    const btnHi = document.getElementById('btnHi');
+    const btnEn = document.getElementById('btnEn');
+
+    function setLang(lang) {
+      const useHi = lang === 'hi';
+      hi.style.display = useHi ? '' : 'none';
+      en.style.display = useHi ? 'none' : '';
+      // toggle button styles
+      btnHi.classList.toggle('btn-primary', useHi);
+      btnHi.classList.toggle('btn-outline-primary', !useHi);
+      btnEn.classList.toggle('btn-primary', !useHi);
+      btnEn.classList.toggle('btn-outline-primary', useHi);
+      // set html lang attr
+      document.documentElement.setAttribute('lang', useHi ? 'hi' : 'en');
+      // remember choice
+      localStorage.setItem('faq_lang', useHi ? 'hi' : 'en');
+    }
+
+    btnHi.addEventListener('click', () => setLang('hi'));
+    btnEn.addEventListener('click', () => setLang('en'));
+
+    // Initialize from localStorage (default Hindi)
+    const saved = localStorage.getItem('faq_lang') || 'hi';
+    setLang(saved);
+  </script>
+</body>
+{% include "_admin_socket_alert.html" %}
+</html>

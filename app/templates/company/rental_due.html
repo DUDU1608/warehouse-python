@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Warehouse Rental Due</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7fb; }
+        .summary-card {
+            background: #f6f9fc;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px #a7b8d0a8;
+            padding: 20px 30px;
+            margin-bottom: 22px;
+        }
+        .summary-label { color: #576574; font-size: 1.07rem; }
+        .summary-value { font-weight: 600; font-size: 1.18rem; }
+        .filter-label { font-weight: 500; }
+        .display-6 { color: #1e3799; font-weight: 600; }
+        .table-responsive { box-shadow: 0 2px 18px #dbe7f8a8; border-radius: 12px; background: #fff; }
+        .badge-flat { background: #0d6efd; }
+        .badge-daily { background: #20c997; }
+        .note-muted { color: #6c757d; font-size: .92rem; }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h2 class="mb-4 display-6 text-center">Rental Due Calculation</h2>
+    <a href="{{ url_for('company_dashboard.finance_dashboard') }}" class="btn btn-outline-dark mb-3">
+        ← Back to Dashboard
+    </a>
+
+    <!-- Filter Form -->
+    <form method="POST" class="row g-2 mb-4">
+        <div class="col-md-3">
+            <label class="filter-label">Date <span class="text-danger">*</span></label>
+            <input type="date" name="date" class="form-control" value="{{ input_date or '' }}" required>
+        </div>
+        <div class="col-md-3">
+            <label class="filter-label">Warehouse</label>
+            <select name="warehouse" class="form-control">
+                <option value="">All</option>
+                {% for w in warehouses %}
+                    <option value="{{ w }}" {% if input_warehouse == w %}selected{% endif %}>{{ w }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="filter-label">Commodity</label>
+            <select name="commodity" class="form-control">
+                <option value="">All</option>
+                {% for c in commodities %}
+                    <option value="{{ c }}" {% if input_commodity == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-primary w-100">Calculate Rental</button>
+        </div>
+    </form>
+
+    <!-- Summary Card -->
+    <div class="summary-card mb-4">
+        <div class="row">
+            <div class="col-md-3 col-6 mb-2">
+                <span class="summary-label">Upto</span><br>
+                <span class="summary-value">{{ input_date or "N/A" }}</span>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <span class="summary-label">Commodity</span><br>
+                <span class="summary-value">{{ input_commodity or "All" }}</span>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <span class="summary-label">Warehouse</span><br>
+                <span class="summary-value">{{ input_warehouse or "All" }}</span>
+            </div>
+            <div class="col-md-3 col-6 mb-2">
+                <span class="summary-label">Total Quantity</span><br>
+                <span class="summary-value">{{ total_quantity }} kg</span>
+            </div>
+        </div>
+        <div class="mt-2">
+            <span class="summary-label">Rental</span>:
+            <span class="summary-value text-success" style="font-size:1.35rem;">&#8377;{{ total_rental }}</span>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>RST No</th>
+                    <th>Warehouse</th>
+                    <th>Stockist Name</th>
+                    <th>Commodity</th>
+                    <th>Quantity (kg)</th>
+                    <th>Days (elapsed)</th>
+                    <th>Rate</th>
+                    <th>Days Charged</th>
+                    <th>Rental (&#8377;)</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rental_results %}
+                <tr>
+                    <td>{{ r.date.strftime('%Y-%m-%d') if r.date else '' }}</td>
+                    <td>{{ r.rst_no }}</td>
+                    <td>{{ r.warehouse }}</td>
+                    <td>{{ r.stockist_name }}</td>
+                    <td>{{ r.commodity }}</td>
+                    <td>{{ r.quantity }}</td>
+                    <td>{{ r.days }}</td>
+                    <td>
+                        {% if r.rate_type == 'FLAT_YEARLY' %}
+                            <span class="badge badge-flat">₹800/ton (yearly flat)</span>
+                        {% else %}
+                            <span class="badge badge-daily">₹3.34/ton/day</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.days_considered if r.days_considered else '-' }}</td>
+                    <td>{{ r.rental }}</td>
+                    <td class="note-muted">{{ r.calc_note }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="11" class="text-center text-secondary">No records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

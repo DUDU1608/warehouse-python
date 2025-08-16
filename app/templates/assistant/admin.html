@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <title>एडमिन चैट कंसोल</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .list-group-item { cursor: pointer; }
+    .badge-escalated{ background:#ffeeba; color:#8a6d3b; }
+    .chat-box{ height:60vh; overflow:auto; background:#fff; border:1px solid #e9eef3; border-radius:10px; padding:10px; }
+    .msg{ margin:.35rem 0; padding:.5rem .7rem; border-radius:10px; max-width:78%; white-space:pre-wrap; word-wrap:break-word; }
+    .msg-user{ background:#e8f0ff; margin-left:auto; }
+    .msg-agent{ background:#e7f7ef; }
+    .msg-system{ background:#fff3cd; }
+    .msg-system.alert{ color:#dc3545; font-weight:700; }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">एडमिन चैट कंसोल</h4>
+    <a href="/" class="btn btn-outline-secondary btn-sm">← होम</a>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-4">
+      <div class="list-group" id="sessionList">
+        {% for s in sessions %}
+  {% set name = (names_map.get(s.user_mobile) if names_map is defined else None) %}
+  {% set display_label = name or s.user_mobile or '—' %}
+
+  <button type="button"
+          class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+          onclick="loadSession({{ s.id }})"
+          id="session-btn-{{s.id}}"
+          data-label="{{ display_label|e }}">
+    <div class="text-start">
+      <div class="fw-semibold">{{ display_label }}</div>
+      {% if name and s.user_mobile %}
+        <small class="text-muted d-block">{{ s.user_mobile }}</small>
+      {% endif %}
+      <small class="text-muted">Started {{ s.created_at.strftime('%d-%m-%Y %H:%M') }}</small>
+    </div>
+    <div class="text-end">
+      {% if s.assigned_agent %}<span class="badge text-bg-primary me-1">Agent: {{ s.assigned_agent }}</span>{% endif %}
+      {% if s.escalated %}<span class="badge badge-escalated me-1">Escalated</span>{% endif %}
+      {% if s.status == 'open' %}<span class="badge text-bg-success">Open</span>{% else %}<span class="badge text-bg-secondary">Closed</span>{% endif %}
+    </div>
+  </button>
+{% endfor %}
+
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0" id="currentSessionLabel">कोई सत्र चयनित नहीं</h5>
+            <div class="d-flex gap-2">
+              <button id="closeBtn" class="btn btn-outline-danger btn-sm" disabled>
+                <i class="bi bi-x-circle"></i> चैट बंद करें
+              </button>
+            </div>
+          </div>
+          <div id="chat" class="chat-box"></div>
+          <div class="input-group mt-2">
+            <input id="text" class="form-control" placeholder="एडमिन संदेश लिखें…" disabled>
+            <button id="send" class="btn btn-primary" disabled>भेजें</button>
+          </div>
+          <small id="statusNote" class="text-muted"></small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+  const socket = io();
+  let currentSessionId = null;
+
+  function scrollBottom(){ const c = document.getElementById('chat'); c.scrollTop = c.scrollHeight; }
+  function clearChat(){ document.getElementById('chat').innerHTML = ''; }
+  function setComposerEnabled(enabled){
+    document.getElementById('text').disabled = !enabled;
+    document.getElementById('send').disabled = !enabled;
+  }
+
+  function renderMessage(m){
+    const chat = document.getElementById('chat');
+    const div = document.createElement('div');
+    let cls = 'msg-system';
+    if (m.sender_type === 'user' || m.sender === 'user') cls = 'msg-user';
+    else if (m.sender_type === 'agent' || m.sender === 'agent') cls = 'msg-agent';
+    else if (m.sender_type === 'system' || m.sender === 'system') cls = 'msg-system';
+
+    div.className = 'msg ' + cls;
+    if ((m.sender_type === 'system' || m.sender === 'system') && (m.alert || (m.text||'').includes('कोई एडमिन उपलब्ध'))){
+      div.classList.add('alert');
+    }
+
+    const sm = document.createElement('small');
+    if (m.created_at){
+      sm.textContent = new Date(m.created_at).toLocaleString('en-GB', {hour12:false, day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    } else {
+      sm.textContent = new Date().toLocaleString('en-GB', {hour12:false, day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+    }
+    div.appendChild(sm);
+
+    const text = m.message || m.text || '';
+    div.appendChild(document.createTextNode(' ' + text));
+
+    chat.appendChild(div);
+    scrollBottom();
+  }
+
+  // Join global alerts
+  socket.on('connect', () => {
+    socket.emit('agent_join', {});
+  });
+
+  socket.on('message', (data) => {
+    if (!currentSessionId) return;
+    renderMessage(data);
+  });
+
+  socket.on('agent_alert', (payload) => {
+    const btn = document.getElementById('session-btn-' + payload.session_id);
+    if (btn) btn.classList.add('border', 'border-warning', 'border-2');
+  });
+
+  socket.on('status_update', (payload) => {
+    if (payload.session_id !== currentSessionId) return;
+    if (payload.status === 'closed'){
+      setComposerEnabled(false);
+      document.getElementById('statusNote').textContent = 'यह चैट बंद है।';
+      // also reflect in list pill
+      const btn = document.getElementById('session-btn-' + currentSessionId);
+      if (btn){
+        btn.querySelectorAll('.text-bg-success').forEach(p=>p.classList.replace('text-bg-success','text-bg-secondary'));
+      }
+    }
+  });
+
+  async function loadSession(id){
+    // leave previous room
+    if (currentSessionId) socket.emit('leave', { session_id: currentSessionId });
+
+    currentSessionId = id;
+    const btn = document.getElementById('session-btn-' + id);
+    const label = btn ? (btn.dataset.label || ('Session #' + id)) : ('Session #' + id);
+    document.getElementById('currentSessionLabel').textContent = label + ' — #'+id;
+    document.getElementById('closeBtn').disabled = false;
+
+    // join room and mark assigned on server
+    socket.emit('agent_join', { session_id: id });
+
+    // load history
+    clearChat();
+    const res = await fetch(`/assistant/api/session/${id}/messages`);
+    if (res.ok){
+      const items = await res.json();
+      items.forEach(renderMessage);
+    }
+
+    // Enable composer by default; if chat is closed, server will push status_update on first action
+    setComposerEnabled(true);
+    document.getElementById('statusNote').textContent = '';
+  }
+
+  document.getElementById('send').onclick = () => {
+    const inp = document.getElementById('text');
+    const text = (inp.value || '').trim();
+    if (!text || !currentSessionId) return;
+    socket.emit('agent_message', { session_id: currentSessionId, text });
+    inp.value = '';
+  };
+
+  document.getElementById('text').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('send').click();
+  });
+
+  document.getElementById('closeBtn').onclick = async () => {
+    if (!currentSessionId) return;
+    const res = await fetch(`/assistant/close/${currentSessionId}`, { method: 'POST' });
+    if (res.ok){
+      setComposerEnabled(false);
+      document.getElementById('statusNote').textContent = 'यह चैट बंद है।';
+      // reflect in list pill immediately
+      const btn = document.getElementById('session-btn-' + currentSessionId);
+      if (btn){
+        btn.querySelectorAll('.text-bg-success').forEach(p=>p.classList.replace('text-bg-success','text-bg-secondary'));
+      }
+      // Add a local system line as confirmation
+      renderMessage({ sender: 'system', text: 'यह चैट एडमिन द्वारा बंद कर दी गई है।' });
+    }
+  };
+</script>
+</body>
+</html>

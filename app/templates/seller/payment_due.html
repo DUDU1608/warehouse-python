@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Due Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f7fafd; }
+        .container { max-width: 700px; margin-top: 40px; }
+        th { background: #274c97; color: #fff; }
+        table { background: #fff; box-shadow: 0 2px 16px #dde2ec; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h3 class="mb-4 text-center text-primary">Payment Due Report</h3>
+    <form method="post" class="row g-3 mb-4 p-3 bg-light rounded shadow-sm">
+        <div class="col-md-4">
+            <label>Seller Name</label>
+            <select name="seller_name" class="form-control" required>
+                <option value="">Select Seller</option>
+                {% for s in sellers %}
+                    <option value="{{ s }}" {% if request.form.get('seller_name') == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label>Warehouse</label>
+            <select name="warehouse" class="form-control" required>
+                <option value="">Select Warehouse</option>
+                {% for w in warehouses %}
+                    <option value="{{ w }}" {% if request.form.get('warehouse') == w %}selected{% endif %}>{{ w }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label>Commodity</label>
+            <select name="commodity" class="form-control" required>
+                <option value="">Select Commodity</option>
+                {% for c in commodities %}
+                    <option value="{{ c }}" {% if request.form.get('commodity') == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-12 text-center">
+            <button class="btn btn-primary mt-3 px-4">Show Payment Due</button>
+        </div>
+        <div class="col-12 mb-2">
+    <a href="{{ url_for('seller_dashboard.seller_dashboard') }}" class="btn btn-outline-dark btn-sm">← Back to Dashboard</a>
+</div>
+
+    </form>
+
+
+    {% if rows and rows|length > 0 %}
+    <table class="table table-bordered text-center mt-4">
+        <thead>
+            <tr>
+                <th>Seller Name</th>
+                <th>Warehouse</th>
+                <th>Commodity</th>
+                <th>Net Amount</th>
+                <th>Amount Paid</th>
+                <th>Payment Due</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.seller_name }}</td>
+                <td>{{ row.warehouse }}</td>
+                <td>{{ row.commodity }}</td>
+                <td>₹ {{ '{:,.2f}'.format(row.net_amount) }}</td>
+                <td>₹ {{ '{:,.2f}'.format(row.amount_paid) }}</td>
+                <td><b class="text-danger">₹ {{ '{:,.2f}'.format(row.payment_due) }}</b></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+</body>
+</html>

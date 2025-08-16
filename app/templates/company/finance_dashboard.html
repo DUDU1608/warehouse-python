@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Company Finance Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .module-btn { margin: 12px 8px; min-width: 230px; }
+        .dashboard-container { margin-top: 55px; text-align: center; }
+        .back-btn { position: absolute; right: 60px; top: 30px; }
+        @media (max-width: 600px) {
+            .module-btn { min-width: 160px; font-size: 14px; }
+            .back-btn { right: 12px; top: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container dashboard-container position-relative">
+    <a href="/dashboard" class="btn btn-outline-dark back-btn">← Back to Dashboard</a>
+    <h2 class="mb-4">Company Finance Dashboard</h2>
+    <div>
+        <a href="/company/add-company-loan" class="btn btn-primary module-btn">Add Company Loan</a>
+        <a href="/company/display-company-loan" class="btn btn-info module-btn">Display Company Loan</a>
+        <a href="/company/add-loan-repayment" class="btn btn-success module-btn">Add Loan Repayment</a>
+        <a href="/company/list-loan-repayment" class="btn btn-warning module-btn">Display Loan Repayment</a>
+        <a href="/company/interest-payable" class="btn btn-outline-danger module-btn">Interest Payable</a>
+        <a href="/company/interest-receivable" class="btn btn-outline-success module-btn">Interest Receivable</a>
+        <a href="/company/company-stock" class="btn btn-outline-primary module-btn">Company Stock</a>
+        <a href="/company/breakeven-price" class="btn btn-secondary module-btn">Breakeven Price Calculator</a>
+        <a href="/company/rental_due" class="btn btn-dark module-btn">Rental Calculator</a>
+        <a href="/company/final-report" class="btn btn-warning module-btn">Final Report</a>
+        <a href="/company/leftover-stock" class="btn btn-outline-dark module-btn">Leftover Stock</a>
+        <a href="/company/add-expenditure" class="btn btn-outline-warning module-btn">Expenditure</a>
+        <a href="/company/profit-loss" class="btn btn-outline-info module-btn">Profit/Loss Calculator</a>
+    </div>
+</div>
+</body>
+{% include "_admin_socket_alert.html" %}
+</html>
+

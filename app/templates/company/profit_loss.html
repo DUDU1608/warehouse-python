@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Profit/Loss Calculator</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .container { max-width: 720px; margin-top: 48px; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px #e1e7f0; padding: 30px 34px;}
+        .form-label { font-weight: 500; }
+        h2 { color: #0a3871; font-weight: 600; margin-bottom: 26px; }
+        .btn-primary { min-width: 130px; }
+        .section-title { margin-top: 18px; margin-bottom: 10px; font-weight: 600; color: #0a3871; }
+        .muted { color: #6c757d; }
+        .table { background: #fff; }
+    </style>
+</head>
+<body class="container mt-4">
+
+    <h2 class="mb-4">Company Finance: Profit/Loss Calculator</h2>
+
+    <div class="btn-group mb-4">
+        <button class="btn btn-primary" onclick="calculateWarehousing()">Warehousing Activity</button>
+        <button class="btn btn-secondary" onclick="calculateFinancing()">Financing Activity</button>
+        <button class="btn btn-secondary" onclick="alert('Trading logic pending')">Trading Activity</button>
+        <button class="btn btn-secondary" onclick="alert('Other incomes/expenses pending')">Others</button>
+    </div>
+
+    <div id="resultArea" class="alert alert-info d-none"></div>
+
+    <script>
+    function formatINR(num) {
+        if (num === null || num === undefined || isNaN(num)) return "0";
+        // Simple Indian number formatting with commas
+        return Number(num).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    }
+
+    function calculateWarehousing() {
+        fetch("/company/calculate-warehousing")
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.getElementById("resultArea");
+                resultDiv.classList.remove("d-none");
+
+                // Safeguards for missing fields
+                const totalRental = data && typeof data.total_rental === 'number' ? data.total_rental : 0;
+                const anunayRental = data && typeof data.anunay_agro_rental === 'number' ? data.anunay_agro_rental : 0;
+                const othersMonthly = (data && Array.isArray(data.others_rental_by_month)) ? data.others_rental_by_month : [];
+
+                // Empty state
+                if (totalRental === 0 && anunayRental === 0 && othersMonthly.length === 0) {
+                    resultDiv.innerHTML = "No rental data available.";
+                    return;
+                }
+
+                let html = `<h5>Total Rental Charged (Upto Today): ₹${formatINR(totalRental)}</h5>`;
+
+                // Section: ANUNAY AGRO (separate total)
+                html += `
+                    <div class="section-title">Rental for ANUNAY AGRO</div>
+                    <div class="mb-3">
+                        <span class="muted">Flat ₹800/ton/year applied (irrespective of duration)</span><br>
+                        <b>₹${formatINR(anunayRental)}</b>
+                    </div>
+                `;
+
+                // Section: Others (month-wise)
+                html += `
+                    <div class="section-title">Rental for Others (Month-wise)</div>
+                `;
+
+                if (othersMonthly.length === 0) {
+                    html += `<div class="muted">No month-wise data for others.</div>`;
+                } else {
+                    html += `<table class="table table-bordered mt-2">
+                        <thead><tr><th>Month</th><th>Rental (₹)</th></tr></thead><tbody>`;
+
+                    othersMonthly.forEach(row => {
+                        const month = (row && row.month) ? row.month : '';
+                        const rent = (row && typeof row.rental === 'number') ? row.rental : 0;
+                        html += `<tr>
+                            <td>${month}</td>
+                            <td>₹${formatINR(rent)}</td>
+                        </tr>`;
+                    });
+
+                    html += `</tbody></table>`;
+                }
+
+                resultDiv.innerHTML = html;
+            })
+            .catch(err => {
+                const resultDiv = document.getElementById("resultArea");
+                resultDiv.classList.remove("d-none");
+                resultDiv.innerHTML = "Error fetching data: " + err;
+                console.error(err);
+            });
+    }
+
+    function calculateFinancing() {
+        fetch("/company/calculate-financing")
+            .then(res => res.json())
+            .then(data => {
+                const resultDiv = document.getElementById("resultArea");
+                resultDiv.classList.remove("d-none");
+                const receivable = data && typeof data.receivable === 'number' ? data.receivable : 0;
+                const payable = data && typeof data.payable === 'number' ? data.payable : 0;
+                const net = data && typeof data.net === 'number' ? data.net : (receivable - payable);
+
+                resultDiv.innerHTML = `
+                    <h5>Financing Activity Summary</h5>
+                    <ul>
+                        <li><b>Interest Receivable:</b> ₹${formatINR(receivable)}</li>
+                        <li><b>Interest Payable:</b> ₹${formatINR(payable)}</li>
+                        <li><b>Net Financing Profit:</b> ₹${formatINR(net)}</li>
+                    </ul>
+                `;
+            })
+            .catch(err => {
+                console.error("Error fetching financing data", err);
+                alert("Error calculating financing activity.");
+            });
+    }
+    </script>
+
+</body>
+</html>

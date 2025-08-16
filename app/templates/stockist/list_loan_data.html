@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loan Data Records</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .btn-action { margin-right: 6px; }
+        .btn-group-sm .btn { font-size: 0.9rem; padding: 3px 12px; }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0 text-center flex-grow-1">Loan Data Records</h3>
+        <a href="{{ url_for('stockist_dashboard.dashboard') }}" class="btn btn-outline-dark ms-3">← Back to Dashboard</a>
+    </div>
+    <div class="mb-3">
+        <a href="{{ url_for('loandata.add_loan_data') }}" class="btn btn-success">Add Loan Data</a>
+    </div>
+    <form class="row g-2 mb-3" method="get">
+        <div class="col-md-2">
+            <label>Start Date</label>
+            <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}">
+        </div>
+        <div class="col-md-2">
+            <label>End Date</label>
+            <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}">
+        </div>
+        <div class="col-md-2">
+            <label>Stockist Name</label>
+            <select name="stockist_name" class="form-control">
+                <option value="">All</option>
+                {% for n in stockist_names %}
+                <option value="{{ n }}" {% if request.args.get('stockist_name') == n %}selected{% endif %}>{{ n }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label>Commodity</label>
+            <select name="commodity" class="form-control">
+                <option value="">All</option>
+                {% for c in commodities %}
+                <option value="{{ c }}" {% if request.args.get('commodity') == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label>Warehouse</label>
+            <select name="warehouse" class="form-control">
+                <option value="">All</option>
+                {% for w in warehouses %}
+                <option value="{{ w }}" {% if request.args.get('warehouse') == w %}selected{% endif %}>{{ w }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary">Filter</button>
+            <a href="{{ url_for('loandata.list_loan_data') }}" class="btn btn-secondary ms-2">Reset</a>
+        </div>
+    </form>
+
+    <div class="mb-3">
+        <a href="{{ url_for('loandata.export_loandata_excel') }}" class="btn btn-outline-success btn-sm">Export Excel</a>
+    </div>
+
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Date</th>
+                <th>Stockist Name</th>
+                <th>Warehouse</th>
+                <th>Commodity</th>
+                <th>Loan Type</th>
+                <th>Amount</th>
+                <th style="width: 140px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loan in loans %}
+            <tr>
+                <td>{{ loan.date.strftime('%Y-%m-%d') if loan.date else '' }}</td>
+                <td>{{ loan.stockist_name }}</td>
+                <td>{{ loan.warehouse }}</td>
+                <td>{{ loan.commodity }}</td>
+                <td>{{ loan.loan_type }}</td>
+                <td>{{ loan.amount }}</td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('loandata.edit_loan_data', loan_id=loan.id) }}" class="btn btn-primary btn-action">Edit</a>
+                        <form method="POST" action="{{ url_for('loandata.delete_loan_data', loan_id=loan.id) }}" style="display:inline;" onsubmit="return confirm('Delete this entry?');">
+                            <button class="btn btn-danger btn-action">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

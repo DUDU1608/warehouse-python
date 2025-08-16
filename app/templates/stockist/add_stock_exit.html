@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Stock Exit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { max-width: 650px; margin-top: 35px; }
+        .form-label { font-weight: 500; }
+    </style>
+    <script>
+        function recalculate() {
+            const qty = parseFloat(document.getElementById('quantity').value) || 0;
+            const reduction = parseFloat(document.getElementById('reduction').value) || 0;
+            const rate = parseFloat(document.getElementById('rate').value) || 0;
+            const handling = parseFloat(document.getElementById('handling').value) || 0;
+
+            const net_qty = qty - reduction;
+            document.getElementById('net_qty').value = net_qty.toFixed(2);
+
+            const cost = net_qty * rate;
+            document.getElementById('cost').value = cost.toFixed(2);
+
+            const net_cost = cost - handling;
+            document.getElementById('net_cost').value = net_cost.toFixed(2);
+        }
+        window.onload = function() {
+            ['quantity', 'reduction', 'rate', 'handling'].forEach(id => {
+                document.getElementById(id).addEventListener('input', recalculate);
+            });
+
+            // Mobile autofill
+            const stockistMobiles = {{ stockists|tojson }};
+            document.getElementById('stockist_name').addEventListener('change', function() {
+                const selectedName = this.value;
+                const found = stockistMobiles.find(s => s.name === selectedName);
+                document.getElementById('mobile').value = found ? found.mobile : '';
+            });
+        };
+    </script>
+</head>
+<body>
+<div class="container">
+    <h3 class="mb-4 text-center">Add Stock Exit Entry</h3>
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input name="date" type="date" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Warehouse</label>
+            <input name="warehouse" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Stockist Name</label>
+            <select name="stockist_name" id="stockist_name" class="form-control" required>
+                <option value="">Select Stockist</option>
+                {% for s in stockists %}
+                <option value="{{ s.name }}">{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Mobile</label>
+            <input name="mobile" id="mobile" class="form-control" required readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Commodity</label>
+            <select name="commodity" class="form-control" required>
+                <option value="Wheat">Wheat</option>
+                <option value="Maize">Maize</option>
+                <option value="Paddy">Paddy</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Quantity</label>
+            <input id="quantity" name="quantity" type="number" step="0.01" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Reduction</label>
+            <input id="reduction" name="reduction" type="number" step="0.01" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Net Quantity</label>
+            <input id="net_qty" name="net_qty" type="number" step="0.01" class="form-control" required readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Rate</label>
+            <input id="rate" name="rate" type="number" step="0.01" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Cost</label>
+            <input id="cost" name="cost" type="number" step="0.01" class="form-control" required readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Handling</label>
+            <input id="handling" name="handling" type="number" step="0.01" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Net Cost</label>
+            <input id="net_cost" name="net_cost" type="number" step="0.01" class="form-control" required readonly>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Quality</label>
+            <select name="quality" class="form-control" required>
+                <option value="Good">Good</option>
+                <option value="BD">BD</option>
+            </select>
+        </div>
+        <button class="btn btn-primary">Add Stock Exit</button>
+        <a href="{{ url_for('stockexit.list_stock_exit') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+</body>
+</html>
+
+

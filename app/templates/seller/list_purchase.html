@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Purchase List</title>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f6f9fb; }
+        .container { margin-top: 40px; }
+        .table thead { background: #274c97; color: #274c97; }
+        .form-label { font-weight: 600; }
+        .actions .btn { margin-right: 5px; }
+        .btn-warning { color: #212529; font-weight: 600; }
+        .dataTables_filter, .dataTables_info, .dataTables_length, .dataTables_paginate { display: none !important; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="mb-4 text-primary text-center">Purchase Records</h2>
+
+    <!-- Filters -->
+    <form class="row g-2 mb-4" method="get">
+        <div class="col-md-2">
+            <label class="form-label">Start Date</label>
+            <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">End Date</label>
+            <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Seller</label>
+            <select name="seller" class="form-select">
+                <option value="">All</option>
+                {% for s in sellers %}
+                <option value="{{ s }}" {% if request.args.get('seller') == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Warehouse</label>
+            <select name="warehouse" class="form-select">
+                <option value="">All</option>
+                {% for w in warehouses %}
+                <option value="{{ w }}" {% if request.args.get('warehouse') == w %}selected{% endif %}>{{ w }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Commodity</label>
+            <select name="commodity" class="form-select">
+                <option value="">All</option>
+                <option value="Wheat">Wheat</option>
+                <option value="Maize">Maize</option>
+                <option value="Paddy">Paddy</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Quality</label>
+            <select name="quality" class="form-select">
+                <option value="">All</option>
+                <option value="Good">Good</option>
+                <option value="BD">BD</option>
+            </select>
+        </div>
+        <div class="col-12 mt-3 text-end">
+            <button class="btn btn-outline-primary btn-sm">Filter</button>
+            <a href="{{ url_for('purchase.list_purchases') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+        </div>
+    </form>
+
+    <!-- Export/Import/Transfer/Back -->
+    <div class="d-flex justify-content-between mb-3 flex-wrap">
+        <form method="POST" action="{{ url_for('purchase.import_purchases_excel') }}" enctype="multipart/form-data" class="d-flex align-items-center mb-2">
+            <input type="file" name="file" class="form-control form-control-sm me-2" required>
+            <button class="btn btn-outline-secondary btn-sm">Import Excel</button>
+        </form>
+        <div>
+            <a href="{{ url_for('purchase.export_purchases_excel') }}" class="btn btn-outline-success btn-sm me-2">Export Excel</a>
+            <button type="button" class="btn btn-outline-danger btn-sm me-2" onclick="exportPDF()">Export PDF</button>
+            <button type="button" class="btn btn-warning btn-sm me-2">Transfer</button>
+            <a href="/dashboard" class="btn btn-outline-dark btn-sm">← Back to Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Purchase Table -->
+    <div class="table-responsive">
+        <table id="purchase-table" class="table table-bordered table-striped align-middle text-center">
+            <thead>
+                <tr>
+                    <th>Date</th><th>RST No</th><th>Warehouse</th><th>Seller</th><th>Mobile</th>
+                    <th>Commodity</th><th>Qty</th><th>Reduction</th><th>Net Qty</th><th>Rate</th>
+                    <th>Cost</th><th>Handling</th><th>Net Cost</th><th>Quality</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in purchases %}
+                <tr>
+                    <td>{{ p.date }}</td>
+                    <td>{{ p.rst_no }}</td>
+                    <td>{{ p.warehouse }}</td>
+                    <td>{{ p.seller_name }}</td>
+                    <td>{{ p.mobile }}</td>
+                    <td>{{ p.commodity }}</td>
+                    <td>{{ p.quantity }}</td>
+                    <td>{{ p.reduction }}</td>
+                    <td>{{ p.net_qty }}</td>
+                    <td>{{ p.rate }}</td>
+                    <td>{{ p.cost }}</td>
+                    <td>{{ p.handling }}</td>
+                    <td>{{ p.net_cost }}</td>
+                    <td>{{ p.quality }}</td>
+                    <td class="actions">
+                        <a href="{{ url_for('purchase.edit_purchase', purchase_id=p.id) }}" class="btn btn-primary btn-sm">Edit</a>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow({{ p.id }})">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- PDF Export: just prints the page for now -->
+<script>
+function exportPDF() {
+    window.print();
+}
+
+function deleteRow(id) {
+    if (!confirm("Delete this purchase entry?")) return;
+    fetch(`/purchase/delete-purchase/${id}`, { method: "POST" })
+        .then(res => res.json())
+        .then(json => {
+            if (json.success) location.reload();
+        });
+}
+</script>
+</body>
+</html>

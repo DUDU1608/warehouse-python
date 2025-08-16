@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Rental Statement PDF</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 24px;}
+        h2 { text-align: center; color: #23406e; }
+        table { width: 100%; border-collapse: collapse; margin-top: 24px;}
+        th, td { border: 1px solid #666; padding: 8px; font-size: 13px; word-break: break-all;}
+        th { background: #e9eef9; }
+        .summary { margin-bottom: 20px; font-size: 15px; }
+    </style>
+</head>
+<body>
+    <h2>Warehouse Rental Statement</h2>
+    <div class="summary">
+        <strong>Total Rental:</strong> ₹{{ summary.total_rental }}<br>
+        <strong>Net Stock as of {{ summary.filters.date }}:</strong> {{ summary.last_net_qty }} kg<br>
+        <strong>Stockist:</strong> {{ summary.filters.stockist_name }},
+        <strong>Warehouse:</strong> {{ summary.filters.warehouse }},
+        <strong>Commodity:</strong> {{ summary.filters.commodity }}
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Warehouse</th>
+                <th>Commodity</th>
+                <th>Quantity (kg, cum.)</th>
+                <th>Exit Quantity (kg, cum.)</th>
+                <th>Net Quantity (kg, cum.)</th>
+                <th>Rental (₹/day)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.warehouse }}</td>
+                <td>{{ row.commodity }}</td>
+                <td>{{ row.quantity }}</td>
+                <td>{{ row.exit_quantity }}</td>
+                <td>{{ row.net_quantity }}</td>
+                <td>{{ row.rental }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

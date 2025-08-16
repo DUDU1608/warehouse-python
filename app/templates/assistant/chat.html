@@ -1,0 +1,153 @@
+<!-- templates/assistant/chat.html -->
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <title>वर्चुअल असिस्टेंट</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root{ --line:#e9eef3; --ink:#1f2937; --card:#ffffff; --shadow:0 10px 28px rgba(0,0,0,.08); }
+    body{ background:#f7f9fb; color:var(--ink); }
+    .wrap{ min-height: 100vh; display:grid; place-items:center; padding:16px; }
+    .chat-wrap{
+      width:100%; max-width:520px; background:var(--card); border:1px solid var(--line);
+      border-radius:14px; box-shadow: var(--shadow); overflow:hidden;
+    }
+    .chat-head{ padding:.75rem 1rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:.75rem; }
+    .chat-title{ margin:0; font-weight:800; font-size:1.05rem; }
+    .chat-box{ height:58vh; overflow-y:auto; padding:1rem; }
+    .msg{ margin:.35rem 0; padding:.6rem .8rem; border-radius:10px; max-width:78%; word-wrap:break-word; white-space:pre-wrap; }
+    .msg small{ opacity:.75; display:block; margin-bottom:.15rem; }
+    .msg-user{ background:#e8f0ff; margin-left:auto; }
+    .msg-bot{ background:#f1f3f4; }
+    .msg-system{ background:#fff3cd; }
+    .msg-system.alert{ color:#dc3545; font-weight:700; }
+    .msg-agent{ background:#e7f7ef; }
+    .chat-input{ border-top:1px solid var(--line); padding:.75rem; background:#fbfcfe; }
+    .hint{ font-size:.9rem; color:#6b7280; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="chat-wrap">
+    <div class="chat-head">
+      <h6 class="chat-title">
+  📦 खाता सहायता — {{ user_display_name }}
+</h6>
+      <a href="/" class="btn btn-sm btn-outline-secondary">← होम</a>
+    </div>
+
+    <div id="chat" class="chat-box">
+      {% for m in messages %}
+        {% set cls = 'msg-bot' %}
+        {% if m.sender_type == 'user' %}
+          {% set cls = 'msg-user' %}
+        {% elif m.sender_type == 'system' %}
+          {% set cls = 'msg-system' %}
+        {% elif m.sender_type == 'agent' %}
+          {% set cls = 'msg-agent' %}
+        {% endif %}
+        {% set is_alert = (m.sender_type == 'system') and ('कोई एडमिन उपलब्ध' in m.message) %}
+        <div class="msg {{ cls }}{% if is_alert %} alert{% endif %}">
+          <small>{{ m.created_at.strftime('%d-%m-%Y %H:%M') }}</small>
+          {{ m.message }}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="chat-input">
+      <div class="input-group">
+        <input id="text" class="form-control" placeholder="अपना संदेश लिखें…" {% if sess.status != 'open' %}disabled{% endif %}>
+        <button id="send" class="btn btn-primary" {% if sess.status != 'open' %}disabled{% endif %}>भेजें</button>
+      </div>
+      <div class="hint mt-1">
+        {% if sess.status == 'open' %}
+          यह चैट आपके खाते से जुड़ी है। हमारी टीम जल्द ही जुड़ेगी — कृपया अपना संदेश स्पष्ट रूप से लिखें।
+        {% else %}
+          यह चैट बंद है। कृपया बाद में पुनः प्रयास करें।
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+  const sessionId = {{ sess.id }};
+  const socket = io();
+
+  function scrollBottom(){
+    const c = document.getElementById('chat');
+    c.scrollTop = c.scrollHeight;
+  }
+
+  function setInputState(open){
+    const t = document.getElementById('text');
+    const b = document.getElementById('send');
+    t.disabled = !open; b.disabled = !open;
+  }
+
+  socket.on('connect', () => {
+    socket.emit('join', { session_id: sessionId });
+    setTimeout(scrollBottom, 100);
+  });
+
+  socket.on('message', (data) => {
+    const chat = document.getElementById('chat');
+    const div = document.createElement('div');
+
+    let cls = 'msg-bot';
+    if (data.sender === 'user') cls = 'msg-user';
+    else if (data.sender === 'system') cls = 'msg-system';
+    else if (data.sender === 'agent') cls = 'msg-agent';
+
+    div.className = 'msg ' + cls;
+    if (data.sender === 'system' && data.alert) div.classList.add('alert');
+
+    const sm = document.createElement('small');
+    const now = new Date();
+    sm.textContent = now.toLocaleString('en-GB', { hour12:false, day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    div.appendChild(sm);
+
+    div.appendChild(document.createTextNode(data.text || ''));
+    chat.appendChild(div);
+    scrollBottom();
+  });
+
+  socket.on('status_update', (payload) => {
+    if (payload.session_id !== sessionId) return;
+    if (payload.status === 'closed'){
+      setInputState(false);
+      const chat = document.getElementById('chat');
+      const div = document.createElement('div');
+      div.className = 'msg msg-system';
+      const sm = document.createElement('small');
+      sm.textContent = new Date().toLocaleString('en-GB', {hour12:false, day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+      div.appendChild(sm);
+      div.appendChild(document.createTextNode(' यह चैट एडमिन द्वारा बंद कर दी गई है।'));
+      chat.appendChild(div);
+      scrollBottom();
+    }
+  });
+
+  document.getElementById('send').onclick = send;
+  document.getElementById('text').addEventListener('keydown', (e)=>{ if(e.key==='Enter') send(); });
+
+  function send(){
+    const t = document.getElementById('text');
+    const text = t.value.trim();
+    if(!text) return;
+    socket.emit('user_message', { session_id: sessionId, text });
+    t.value = '';
+  }
+
+  window.addEventListener('beforeunload', ()=>{
+    try { socket.emit('leave', { session_id: sessionId }); } catch(e){}
+  });
+</script>
+</body>
+</html>
+

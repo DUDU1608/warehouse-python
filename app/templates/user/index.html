@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Anunay Agro | Warehousing & Grain Storage</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+
+  <style>
+    :root{
+      --brand-primary:#2c7a3f;    /* agriculture green */
+      --brand-accent:#f39c12;     /* warm orange */
+      --brand-dark:#1f2937;
+    }
+
+    body{
+      min-height:100vh;
+      margin:0;
+      background: url("{{ url_for('static', filename='images/index_background.jpg') }}") center/cover fixed no-repeat;
+      position:relative;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Subtle gradient overlay over background */
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.45));
+      pointer-events:none;
+      z-index:-1;
+    }
+
+    /* Faint watermark logo in the bg (brand reinforcement) */
+    body::after{
+      content:"";
+      position:fixed;
+      inset:0;
+      background: url("{{ url_for('static', filename='images/logo_anunay_agro.png') }}") center/40vmin no-repeat;
+      opacity:.05;
+      filter:grayscale(100%);
+      z-index:-1;
+      pointer-events:none;
+    }
+
+    /* Top nav */
+    .navbar{
+      background:rgba(255,255,255,.9)!important;
+      backdrop-filter:saturate(120%) blur(6px);
+      box-shadow:0 6px 24px rgba(0,0,0,.08);
+    }
+    .logo-img{height:52px;width:auto;border-radius:6px}
+    .company-name{font-weight:700;color:var(--brand-dark);letter-spacing:.2px}
+    .slogan{font-size:.88rem;color:#6b7280}
+
+    .main{
+      flex:1;
+      display:flex;
+      align-items:center;
+      padding:48px 16px;
+    }
+    .panel{
+      background:rgba(255,255,255,.92);
+      border-radius:16px;
+      box-shadow:0 10px 40px rgba(0,0,0,.16);
+      padding:32px 24px;
+    }
+
+    /* Big CTA button with gradient + hover */
+    .btn-cta{
+      background:linear-gradient(90deg, var(--brand-primary), #3aa35a);
+      border:none;
+      color:#fff;
+      padding:14px 26px;
+      font-weight:700;
+      border-radius:10px;
+      box-shadow:0 8px 24px rgba(42,122,63,.25);
+      transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    }
+    .btn-cta:hover{transform:translateY(-2px); box-shadow:0 12px 30px rgba(42,122,63,.35); opacity:.96}
+
+    /* Feature + Stat cards */
+    .card-lite{
+      background:#fff;
+      border-radius:14px;
+      box-shadow:0 8px 28px rgba(0,0,0,.08);
+      border:0;
+      transition:transform .15s ease, box-shadow .15s ease;
+      height:100%;
+    }
+    .card-lite:hover{transform:translateY(-4px); box-shadow:0 14px 34px rgba(0,0,0,.12)}
+    .icon-pill{
+      width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+      background:#eef7f0;color:var(--brand-primary);font-size:1.35rem;
+    }
+
+    .stat{
+      display:flex;gap:12px;align-items:center;
+    }
+    .stat .bi{font-size:1.25rem;color:var(--brand-accent)}
+    .stat h6{margin:0;font-weight:700}
+    .stat small{color:#6b7280}
+
+    /* Trust badges row */
+    .badge-chip{
+      background:#ffffffcf;border:1px solid #e5e7eb;border-radius:999px;padding:6px 12px;font-size:.9rem;
+      display:inline-flex;align-items:center;gap:8px
+    }
+
+    /* Language toggle */
+    .lang-toggle button{border-radius:999px}
+
+    footer{
+      background:rgba(255,255,255,.92);
+      padding:14px 0;
+      font-size:.95rem;
+      color:#4b5563;
+      text-align:center;
+      border-top:1px solid #eef2f7;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px){
+      .logo-img{height:42px}
+      .panel{padding:22px 16px}
+    }
+
+    /* Optional: gentle animated overlay (subtle “breathing” vignette) */
+    .breath::before{
+      content:"";position:absolute;inset:-20%;
+      background: radial-gradient(50% 50% at 50% 50%, rgba(255,255,255,.025), rgba(0,0,0,.05) 70%, transparent 75%);
+      animation:breath 8s ease-in-out infinite alternate;
+      pointer-events:none;border-radius:20px;
+    }
+    @keyframes breath{from{opacity:.6; transform:scale(1)} to{opacity:.85; transform:scale(1.02)}}
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-md px-3 py-2">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center gap-3" href="#">
+        <img class="logo-img" src="{{ url_for('static', filename='images/logo_anunay_agro.png') }}" alt="Anunay Agro logo" />
+        <div>
+          <div class="company-name">Anunay Agro</div>
+          <div class="slogan">Reducing Post Harvest Wastage</div>
+        </div>
+      </a>
+
+      <div class="ms-auto d-flex align-items-center gap-2 lang-toggle">
+        <!-- Simple language toggle (EN/HI) -->
+        <button class="btn btn-sm btn-outline-secondary" data-lang="en">EN</button>
+        <button class="btn btn-sm btn-outline-secondary" data-lang="hi">हिं</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="container">
+      <div class="panel breath mx-auto" style="max-width:1100px; position:relative;">
+        <div class="text-center mb-3">
+          <h1 class="fw-bold text-white" style="text-shadow:0 2px 8px rgba(0,0,0,.35); letter-spacing:.3px;">
+            <span data-i18n="title">Welcome to Anunay Agro Warehouse Portal</span>
+          </h1>
+          <p class="lead text-white-50 mb-2" style="text-shadow:0 1px 6px rgba(0,0,0,.35);" data-i18n="tagline">
+            Your secure gateway to manage warehouse operations, view reports, and track loans in real-time.
+          </p>
+        </div>
+
+        <!-- Stats row -->
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-4">
+            <div class="card-lite p-3 stat">
+              <i class="bi bi-box-seam"></i>
+              <div>
+                <h6 data-i18n="statStock">Total Stock</h6>
+                <small>{{ total_stock_mt or "—" }} MT</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card-lite p-3 stat">
+              <i class="bi bi-people"></i>
+              <div>
+                <h6 data-i18n="statSellers">Total Sellers</h6>
+                <small>{{ total_sellers or "—" }}</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card-lite p-3 stat">
+              <i class="bi bi-cash-coin"></i>
+              <div>
+                <h6 data-i18n="statLoans">Loans Outstanding</h6>
+                <small>{{ loans_outstanding_inr or "—" }}</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="text-center mb-4">
+          <a href="/user/login" class="btn btn-cta btn-lg" data-i18n="loginCta">Login to Continue</a>
+        </div>
+
+        <!-- Feature cards -->
+        <div class="row g-4 mb-4">
+          <div class="col-12 col-md-4">
+            <a href="/user/login" class="text-decoration-none">
+              <div class="card-lite p-4 h-100">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                  <div class="icon-pill"><i class="bi bi-speedometer2"></i></div>
+                  <h5 class="mb-0" data-i18n="featureDashboard">Seller & Stockist Dashboard</h5>
+                </div>
+                <p class="text-muted mb-0" data-i18n="featureDashboardDesc">
+                  Manage purchases, stock entries, loans, and due reports with ease.
+                </p>
+              </div>
+            </a>
+          </div>
+          <div class="col-12 col-md-4">
+            <a href="/user/login" class="text-decoration-none">
+              <div class="card-lite p-4 h-100">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                  <div class="icon-pill"><i class="bi bi-graph-up-arrow"></i></div>
+                  <h5 class="mb-0" data-i18n="featureReports">Reports & Exports</h5>
+                </div>
+                <p class="text-muted mb-0" data-i18n="featureReportsDesc">
+                  Download summaries in Excel/PDF with powerful filters.
+                </p>
+              </div>
+            </a>
+          </div>
+          <div class="col-12 col-md-4">
+            <a href="/user/login" class="text-decoration-none">
+              <div class="card-lite p-4 h-100">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                  <div class="icon-pill"><i class="bi bi-shield-lock"></i></div>
+                  <h5 class="mb-0" data-i18n="featureOtp">OTP-Based Secure Login</h5>
+                </div>
+                <p class="text-muted mb-0" data-i18n="featureOtpDesc">
+                  Powered by Fast2SMS over SSL. No passwords required.
+                </p>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- News / Updates -->
+        <div class="row g-3 mb-2">
+          <div class="col-12">
+            <h5 class="mb-2" data-i18n="updatesTitle">Recent Updates</h5>
+            <div class="card-lite p-3">
+              <ul class="mb-0" id="newsList">
+                <!-- Example static items; replace with dynamic later -->
+                <li data-i18n="news1">Seasonal potato arrivals expected from Oct 15.</li>
+                <li data-i18n="news2">Wheat storage advisory updated.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trust row -->
+        <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
+          <span class="badge-chip"><i class="bi bi-lock-fill"></i> SSL Secured</span>
+          <span class="badge-chip"><i class="bi bi-chat-dots-fill"></i> Powered by Fast2SMS</span>
+          <span class="badge-chip"><i class="bi bi-phone"></i> Mobile-first</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Help -->
+    <a href="mailto:skchy@anunayagro.co.in" class="position-fixed end-0 bottom-0 m-3 btn btn-light border">
+      <i class="bi bi-question-circle"></i> Help
+    </a>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    © 2025 Anunay Agro |
+    📧 <a href="mailto:skchy@anunayagro.co.in">skchy@anunayagro.co.in</a> |
+    📞 <a href="tel:+919771899097">9771899097</a>, <a href="tel:+916299176257">6299176257</a> |
+    🔧 For portal issues: <a href="tel:+919771259451">9771259451</a> |
+    <a href="/faq" class="ms-2">FAQ</a> · <a href="/contact" class="ms-2">Contact</a> · <a href="/how-to" class="ms-2">How to Use Portal</a>
+  </footer>
+
+  <!-- Tiny language switcher (EN/HI) -->
+  <script>
+    const dict = {
+      en:{
+        title:"Welcome to Anunay Agro Warehouse Portal",
+        tagline:"Your secure gateway to manage warehouse operations, view reports, and track loans in real-time.",
+        statStock:"Total Stock",
+        statSellers:"Total Sellers",
+        statLoans:"Loans Outstanding",
+        loginCta:"Login to Continue",
+        featureDashboard:"Seller & Stockist Dashboard",
+        featureDashboardDesc:"Manage purchases, stock entries, loans, and due reports with ease.",
+        featureReports:"Reports & Exports",
+        featureReportsDesc:"Download summaries in Excel/PDF with powerful filters.",
+        featureOtp:"OTP-Based Secure Login",
+        featureOtpDesc:"Powered by Fast2SMS over SSL. No passwords required.",
+        updatesTitle:"Recent Updates",
+        news1:"Seasonal potato arrivals expected from Oct 15.",
+        news2:"Wheat storage advisory updated."
+      },
+      hi:{
+        title:"अनुनय एग्रो वेयरहाउस पोर्टल में आपका स्वागत है",
+        tagline:"वेयरहाउस संचालन, रिपोर्ट और ऋण ट्रैकिंग — सब कुछ सुरक्षित और रियल-टाइम में।",
+        statStock:"कुल स्टॉक",
+        statSellers:"कुल विक्रेता",
+        statLoans:"बकाया ऋण",
+        loginCta:"लॉगिन करें",
+        featureDashboard:"सेलर व स्टॉकिस्ट डैशबोर्ड",
+        featureDashboardDesc:"खरीद, स्टॉक एंट्री, ऋण व देय रिपोर्ट आसानी से प्रबंधित करें।",
+        featureReports:"रिपोर्ट्स व एक्सपोर्ट्स",
+        featureReportsDesc:"एक्सेल/पीडीएफ में सारांश डाउनलोड करें, शक्तिशाली फ़िल्टर के साथ।",
+        featureOtp:"ओटीपी आधारित सुरक्षित लॉगिन",
+        featureOtpDesc:"Fast2SMS व SSL द्वारा सुरक्षित। पासवर्ड की जरूरत नहीं।",
+        updatesTitle:"ताज़ा अपडेट",
+        news1:"मौसमी आलू 15 अक्टूबर से आने की उम्मीद।",
+        news2:"गेहूँ भंडारण सलाह अपडेट की गई।"
+      }
+    };
+
+    document.querySelectorAll(".lang-toggle [data-lang]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const lang = btn.getAttribute("data-lang");
+        const map = dict[lang] || dict.en;
+        document.querySelectorAll("[data-i18n]").forEach(el=>{
+          const k = el.getAttribute("data-i18n");
+          if(map[k] !== undefined) el.textContent = map[k];
+        });
+      });
+    });
+  </script>
+</body>
+</html>

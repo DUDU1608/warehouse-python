@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>विक्रेता मॉड्यूल | Warehouse Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .summary-card {
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      background: #bdd0f3;
+    }
+    .summary-title { font-size: 0.9rem; color: #6c757d; }
+    .summary-value { font-size: 1.25rem; font-weight: bold; margin-top: 5px; }
+    .table-container { overflow-x: auto; }
+    .lang-wrap { display:flex; justify-content:flex-end; align-items:center; gap:.5rem; }
+  </style>
+</head>
+<body class="container py-4">
+
+  <!-- Top bar: Back + Language -->
+  <div class="mb-3 lang-wrap">
+    <a href="{{ url_for('user_views.home') }}" class="btn btn-outline-secondary"
+       data-hi="← मुख्य पृष्ठ पर वापस जाएं"
+       data-en="← Back to Home">← मुख्य पृष्ठ पर वापस जाएं</a>
+
+    <select id="langSwitcher" class="form-select form-select-sm" style="width:auto">
+      <option value="hi" selected>हिन्दी</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+
+  <h3 class="mb-4 text-center"
+      data-hi="📦 विक्रेता मॉड्यूल"
+      data-en="📦 Seller Module">📦 विक्रेता मॉड्यूल</h3>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-4" id="sellerTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="materials-tab" data-bs-toggle="tab" data-bs-target="#materials" type="button" role="tab"
+              data-hi="🧾 बेचे गए सामान" data-en="🧾 Materials Sold">🧾 बेचे गए सामान</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab"
+              data-hi="💰 प्राप्त भुगतान" data-en="💰 Payments Received">💰 प्राप्त भुगतान</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="due-tab" data-bs-toggle="tab" data-bs-target="#due" type="button" role="tab"
+              data-hi="💸 बकाया भुगतान" data-en="💸 Payment Due">💸 बकाया भुगतान</button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="sellerTabContent">
+
+    <!-- Materials Sold -->
+    <div class="tab-pane fade show active" id="materials" role="tabpanel" aria-labelledby="materials-tab">
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="summary-card">
+            <div class="summary-title" data-hi="कुल मात्रा" data-en="Total Quantity">कुल मात्रा</div>
+            <div class="summary-value">{{ purchase_summary.quantity | round(2) | kg_to_mt }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card">
+            <div class="summary-title" data-hi="कटौती" data-en="Reduction">कटौती</div>
+            <div class="summary-value">{{ purchase_summary.reduction | round(2) | kg_to_mt }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card">
+            <div class="summary-title" data-hi="शुद्ध मात्रा" data-en="Net Quantity">शुद्ध मात्रा</div>
+            <div class="summary-value">{{ purchase_summary.net_qty | round(2) | kg_to_mt }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card">
+            <div class="summary-title" data-hi="लागत" data-en="Cost">लागत</div>
+            <div class="summary-value">{{ purchase_summary.cost | round(2) | format_inr }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card">
+            <div class="summary-title" data-hi="हैंडलिंग शुल्क" data-en="Handling Charges">हैंडलिंग शुल्क</div>
+            <div class="summary-value">{{ purchase_summary.handling | round(2) | format_inr }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card">
+            <div class="summary-title" data-hi="कुल लागत" data-en="Total Cost">कुल लागत</div>
+            <div class="summary-value">{{ purchase_summary.net_cost | round(2) | format_inr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="table table-striped table-bordered table-sm align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th data-hi="तिथि" data-en="Date">तिथि</th>
+              <th data-hi="आरएसटी नं." data-en="RST No">आरएसटी नं.</th>
+              <th data-hi="वेयरहाउस" data-en="Warehouse">वेयरहाउस</th>
+              <th data-hi="वस्तु" data-en="Commodity">वस्तु</th>
+              <th data-hi="मात्रा (किग्रा)" data-en="Qty (in kg)">मात्रा (किग्रा)</th>
+              <th data-hi="कटौती (किग्रा)" data-en="Reduction (in kg)">कटौती (किग्रा)</th>
+              <th data-hi="शुद्ध मात्रा (किग्रा)" data-en="Net Qty (in kg)">शुद्ध मात्रा (किग्रा)</th>
+              <th data-hi="दर" data-en="Rate">दर</th>
+              <th data-hi="लागत" data-en="Cost">लागत</th>
+              <th data-hi="हैंडलिंग" data-en="Handling">हैंडलिंग</th>
+              <th data-hi="कुल" data-en="Total">कुल</th>
+              <th data-hi="गुणवत्ता" data-en="Quality">गुणवत्ता</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in purchases %}
+            <tr>
+              <td>{{ p.date | format_date }}</td>
+              <td>{{ p.rst_no }}</td>
+              <td>{{ p.warehouse | to_hindi}}</td>
+              <td>{{ p.commodity | to_hindi }}</td>
+              <td>{{ p.quantity | round(2) }}</td>
+              <td>{{ p.reduction }}</td>
+              <td>{{ p.net_qty | round(2) }}</td>
+              <td>{{ p.rate }}</td>
+              <td>{{ p.cost | round(2) }}</td>
+              <td>{{ p.handling }}</td>
+              <td>{{ p.net_cost | round(2) }}</td>
+              <td>{{ p.quality }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Payments Received -->
+    <div class="tab-pane fade" id="payments" role="tabpanel" aria-labelledby="payments-tab">
+      <div class="row mb-4">
+        <div class="col-md-4 offset-md-4">
+          <div class="summary-card text-center">
+            <div class="summary-title" data-hi="कुल प्राप्त भुगतान" data-en="Total Payments Received">कुल प्राप्त भुगतान</div>
+            <div class="summary-value text-success">{{ payment_summary.amount or 0 | round(2) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="table table-striped table-bordered table-sm align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th data-hi="तिथि" data-en="Date">तिथि</th>
+              <th data-hi="बैंक संदर्भ" data-en="Bank Reference">बैंक संदर्भ</th>
+              <th data-hi="राशि" data-en="Amount">राशि</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pay in payments %}
+            <tr>
+              <td>{{ pay.date | format_date }}</td>
+              <td>{{ pay.bank_reference }}</td>
+              <td>{{ pay.amount_paid }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Payment Due -->
+    <div class="tab-pane fade" id="due" role="tabpanel" aria-labelledby="due-tab">
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="summary-card text-center">
+            <div class="summary-title" data-hi="आपूर्ति की शुद्ध लागत" data-en="Net Cost of Material Supplied">आपूर्ति की शुद्ध लागत</div>
+            <div class="summary-value">{{ (net_cost or 0) | format_inr }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card text-center">
+            <div class="summary-title" data-hi="भुगतान राशि" data-en="Amount Paid">भुगतान राशि</div>
+            <div class="summary-value text-success">{{ (amount_paid or 0) | format_inr }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="summary-card text-center">
+            <div class="summary-title"
+                 data-hi="देय भुगतान ({{ today }} तक)"
+                 data-en="Payment Due (till {{ today }})">देय भुगतान ({{ today }} तक)</div>
+            <div class="summary-value text-danger fw-bold">{{ (payment_due or 0) | format_inr }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Language Toggle -->
+  <script>
+    (function () {
+      const switcher = document.getElementById('langSwitcher');
+      const applyLang = (lang) => {
+        document.documentElement.setAttribute('lang', lang);
+        document.querySelectorAll('[data-hi]').forEach(el => {
+          const txt = el.getAttribute(lang === 'hi' ? 'data-hi' : 'data-en');
+          if (txt !== null) el.innerHTML = txt;
+        });
+        // Update title as well
+        const pageTitleHi = 'विक्रेता मॉड्यूल | Warehouse Portal';
+        const pageTitleEn = 'Seller Module | Warehouse Portal';
+        document.title = (lang === 'hi') ? pageTitleHi : pageTitleEn;
+        // Persist choice for this browser
+        try { localStorage.setItem('ui-lang', lang); } catch(e){}
+      };
+
+      // Restore saved language
+      let lang = 'hi';
+      try {
+        lang = localStorage.getItem('ui-lang') || 'hi';
+      } catch(e){}
+      switcher.value = lang;
+      applyLang(lang);
+
+      switcher.addEventListener('change', function () {
+        applyLang(this.value);
+      });
+    })();
+  </script>
+</body>
+</html>

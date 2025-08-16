@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Purchase</title>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f6f9fb; }
+        .container { margin-top: 40px; max-width: 700px; }
+        .form-label { font-weight: 600; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="mb-4 text-primary text-center">Edit Purchase</h2>
+    <form method="POST">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Date</label>
+                <input name="date" type="date" class="form-control" value="{{ purchase.date }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">RST No</label>
+                <input name="rst_no" class="form-control" value="{{ purchase.rst_no }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Warehouse</label>
+                <input name="warehouse" class="form-control" value="{{ purchase.warehouse }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Seller</label>
+                <input name="seller_name" class="form-control" value="{{ purchase.seller_name }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Mobile</label>
+                <input name="mobile" class="form-control" value="{{ purchase.mobile }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Commodity</label>
+                <select name="commodity" class="form-select">
+                    <option value="Wheat" {% if purchase.commodity == 'Wheat' %}selected{% endif %}>Wheat</option>
+                    <option value="Maize" {% if purchase.commodity == 'Maize' %}selected{% endif %}>Maize</option>
+                    <option value="Paddy" {% if purchase.commodity == 'Paddy' %}selected{% endif %}>Paddy</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Quantity</label>
+                <input name="quantity" type="number" step="0.01" class="form-control" value="{{ purchase.quantity }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Reduction</label>
+                <input name="reduction" type="number" step="0.01" class="form-control" value="{{ purchase.reduction }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Rate</label>
+                <input name="rate" type="number" step="0.01" class="form-control" value="{{ purchase.rate }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Handling Charges</label>
+                <input name="handling" type="number" step="0.01" class="form-control" value="{{ purchase.handling }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Quality</label>
+                <select name="quality" class="form-select">
+                    <option value="Good" {% if purchase.quality == 'Good' %}selected{% endif %}>Good</option>
+                    <option value="BD" {% if purchase.quality == 'BD' %}selected{% endif %}>BD</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn btn-primary mt-4" type="submit">Save</button>
+        <a href="{{ url_for('purchase.list_purchases') }}" class="btn btn-secondary mt-4 ms-2">Cancel</a>
+    </form>
+</div>
+</body>
+</html>

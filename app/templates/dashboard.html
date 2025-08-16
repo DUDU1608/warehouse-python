@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Main Dashboard</title>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f2f6fc;
+        }
+        .dashboard-card {
+            max-width: 500px;
+            margin: 60px auto;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 0 18px rgba(0, 0, 0, 0.08);
+            background-color: white;
+        }
+        .dashboard-card h2 {
+            font-weight: bold;
+            margin-bottom: 25px;
+        }
+        .dashboard-card .btn {
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-card text-center">
+        <h2>Warehouse Admin Dashboard</h2>
+        <div class="d-grid gap-2">
+            <a href="/seller/dashboard" class="btn btn-primary">Seller Module</a>
+            <a href="/stockist/dashboard" class="btn btn-success">Stockist Module</a>
+            <a href="/buyer/dashboard" class="btn btn-info">Buyer Module</a>
+            <a href="/purchase/summary" class="btn btn-warning">Purchase Summary</a>
+            <a href="/stock_summary" class="btn btn-secondary">Stock Summary</a>
+            <a href="/company/finance" class="btn btn-info">Company Finance</a>
+            <a href="/logout" class="btn btn-outline-danger mt-3">Logout</a>
+<div class="d-flex justify-content-end mb-3">
+  <a href="/assistant/admin" class="btn btn-warning btn-lg">
+    <i class="bi bi-chat-dots me-1"></i> Open Chat Console
+  </a>
+</div>
+
+        </div>
+    </div>
+</body>
+{% include "_admin_socket_alert.html" %}
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stockist Stock Summary</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .summary-table th, .summary-table td { vertical-align: middle; text-align: center; }
+        .summary-table thead th { background: #1e3799; color: #fff; }
+        .total-row { background: #e8f0fe; font-weight: bold; }
+        .filter-form label { font-weight: 500; }
+        .filter-form .btn { min-width: 120px; }
+        .table-responsive { box-shadow: 0 2px 18px #dbe7f8a8; border-radius: 12px; background: #fff; margin-top: 24px;}
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h2 class="mb-4 display-6 text-center">Stockist Stock Summary</h2>
+
+    <a href="/dashboard" class="btn btn-outline-secondary px-4 py-2" style="font-weight: 500;">← Back to Admin Dashboard</a>
+
+    <!-- Filter Form -->
+    <form method="GET" class="row g-3 filter-form mb-4">
+        <div class="col-md-4">
+            <label>Warehouse</label>
+            <select name="warehouse" class="form-control">
+                <option value="">All</option>
+                {% for w in warehouses %}
+                    <option value="{{ w }}" {% if w == selected_warehouse %}selected{% endif %}>{{ w }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label>Commodity</label>
+            <select name="commodity" class="form-control">
+                <option value="">All</option>
+                {% for c in commodities %}
+                    <option value="{{ c }}" {% if c == selected_commodity %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-primary me-2">Filter</button>
+            <a href="{{ url_for('stock_summary.stock_summary') }}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-bordered summary-table">
+            <thead>
+                <tr>
+                    <th>Stockist Name</th>
+                    <th>Company Purchase</th>
+                    <th>Self Storage</th>
+                    <th>Stock Exit</th>
+                    <th>Net Quantity</th>
+                    <th>Margin</th>
+                    <th>Cash Loan</th>
+                    <th>Margin Loan</th>
+                    <th>Total Loan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if summary %}
+                <tr class="total-row">
+                    <td>TOTAL</td>
+                    <td>{{ summary.total_company_purchase or 0 }}</td>
+                    <td>{{ summary.total_self_storage or 0 }}</td>
+                    <td>{{ summary.total_stock_exit or 0 }}</td>
+                    <td>{{ summary.total_net_quantity or 0 }}</td>
+                    <td>{{ summary.total_margin or 0 }}</td>
+                    <td>{{ summary.total_cash_loan or 0 }}</td>
+                    <td>{{ summary.total_margin_loan or 0 }}</td>
+                    <td>{{ summary.total_total_loan or 0 }}</td>
+                </tr>
+                {% endif %}
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.stockist_name }}</td>
+                    <td>{{ row.company_purchase or 0 }}</td>
+                    <td>{{ row.self_storage or 0 }}</td>
+                    <td>{{ row.stock_exit or 0 }}</td>
+                    <td>{{ row.net_quantity or 0 }}</td>
+                    <td>{{ row.margin or 0 }}</td>
+                    <td>{{ row.cash_loan or 0 }}</td>
+                    <td>{{ row.margin_loan or 0 }}</td>
+                    <td>{{ row.total_loan or 0 }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center">No records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+{% include "_admin_socket_alert.html" %}
+</html>
+

@@ -1,0 +1,58 @@
+<!-- Admin-wide Socket.IO alert listener -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<style>
+  #agent-alert-toast { position: fixed; right: 16px; bottom: 16px; z-index: 9999; }
+</style>
+
+<div id="agent-alert-toast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="10000">
+  <div class="d-flex">
+    <div class="toast-body" id="agent-alert-body">
+      New escalated chat.
+    </div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Only attach if admin session; if you can expose is_admin in template context, gate this block.
+  // Otherwise it still works; the server checks admin on agent_join.
+  const sock = io();
+
+  sock.on('connect', function(){
+    // Join the global agents room to receive alerts, regardless of the current admin page
+    sock.emit('agent_join', {});
+  });
+
+  sock.on('agent_alert', function(data){
+    // Update toast text with quick info and a link to jump into assistant admin
+    const body = document.getElementById('agent-alert-body');
+    const scope = data.scope === 'account' ? 'खाता' : 'सार्वजनिक';
+    const link = '/assistant/admin?focus=' + encodeURIComponent(data.session_id);
+    body.innerHTML = `नई चैट (${scope}). <a class="text-decoration-underline text-dark fw-bold" href="${link}">अभी जॉइन करें →</a>`;
+
+    // Show the toast
+    let el = document.getElementById('agent-alert-toast');
+    // Bootstrap 5 toast
+    // If Bootstrap JS isn't globally loaded, load it dynamically:
+    (function ensureBootstrapToast(cb){
+      if (window.bootstrap && bootstrap.Toast) return cb();
+      const s = document.createElement('script');
+      s.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js";
+      s.onload = cb;
+      document.head.appendChild(s);
+    })(function(){
+      const toast = new bootstrap.Toast(el);
+      toast.show();
+      // Optional: subtle sound cue
+      try {
+        const audio = new Audio('data:audio/mp3;base64,//uQZAAAAAAAAAAAA...');
+        // (Tiny silent placeholder; replace with your own sound in /static if desired)
+        audio.play().catch(()=>{});
+      } catch(e){}
+    });
+  });
+})();
+</script>

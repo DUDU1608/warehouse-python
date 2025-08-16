@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Purchase</title>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f7fb;
+        }
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 40px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+        }
+        .form-title {
+            margin-bottom: 25px;
+            font-weight: 600;
+            text-align: center;
+            color: #114488;
+        }
+        .btn-group {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="form-section">
+        <h2 class="form-title">Add Purchase</h2>
+        <form method="POST">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label>Date</label>
+                    <input type="date" name="date" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label>RST No</label>
+                    <input type="text" name="rst_no" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label>Warehouse</label>
+                    <input type="text" name="warehouse" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label>Seller Name</label>
+                    <select name="seller_name" class="form-select" onchange="fillMobile(this.value)" required>
+                        <option value="">Select Seller</option>
+                        {% for s in sellers %}
+                            <option value="{{ s.name }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Mobile</label>
+                    <input type="text" name="mobile" id="mobile-field" class="form-control" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label>Commodity</label>
+                    <select name="commodity" class="form-select" required>
+                        <option value="Wheat">Wheat</option>
+                        <option value="Maize">Maize</option>
+                        <option value="Paddy">Paddy</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label>Quantity</label>
+                    <input type="number" step="any" name="quantity" id="quantity" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label>Reduction</label>
+                    <input type="number" step="any" name="reduction" id="reduction" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label>Net Quantity</label>
+                    <input type="number" step="any" name="net_qty" id="net_qty" class="form-control" readonly>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label>Rate</label>
+                    <input type="number" step="any" name="rate" id="rate" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label>Cost</label>
+                    <input type="number" step="any" name="cost" id="cost" class="form-control" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label>Handling Charges</label>
+                    <input type="number" step="any" name="handling" id="handling" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label>Net Cost</label>
+                    <input type="number" step="any" name="net_cost" id="net_cost" class="form-control" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label>Quality</label>
+                    <select name="quality" class="form-select" required>
+                        <option value="Good">Good</option>
+                        <option value="BD">BD</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Add Purchase</button>
+                <a href="/seller/purchases" class="btn btn-dark">View All Purchases</a>
+                <a href="/seller/dashboard" class="btn btn-outline-secondary">← Back to Seller Dashboard</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const sellerMobileMap = {
+        {% for s in sellers %}
+        "{{ s.name|replace('"', '\\"') }}": "{{ s.mobile }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    function fillMobile(name) {
+        document.getElementById('mobile-field').value = sellerMobileMap[name] || '';
+    }
+
+    function calculateFields() {
+        const qty = parseFloat(document.getElementById('quantity').value) || 0;
+        const red = parseFloat(document.getElementById('reduction').value) || 0;
+        const rate = parseFloat(document.getElementById('rate').value) || 0;
+        const handling = parseFloat(document.getElementById('handling').value) || 0;
+
+        const netQty = qty - red;
+        const cost = netQty * rate;
+        const netCost = cost - handling;
+
+        document.getElementById('net_qty').value = netQty.toFixed(2);
+        document.getElementById('cost').value = cost.toFixed(2);
+        document.getElementById('net_cost').value = netCost.toFixed(2);
+    }
+
+    document.getElementById('quantity').addEventListener('input', calculateFields);
+    document.getElementById('reduction').addEventListener('input', calculateFields);
+    document.getElementById('rate').addEventListener('input', calculateFields);
+    document.getElementById('handling').addEventListener('input', calculateFields);
+</script>
+</body>
+</html>

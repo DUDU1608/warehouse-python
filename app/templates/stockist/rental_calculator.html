@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Warehouse Rental Calculator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">Warehouse Rental Calculator</h2>
+    <form method="POST" class="row g-2 mb-4">
+        <div class="col-md-3">
+            <label>Date (Upto)</label>
+            <input type="date" name="date" class="form-control" required>
+        </div>
+        <div class="col-md-3">
+            <label>Stockist Name</label>
+            <select name="stockist_name" class="form-control">
+                <option value="">All</option>
+                {% for s in stockists %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label>Warehouse</label>
+            <select name="warehouse" class="form-control">
+                <option value="">All</option>
+                {% for w in warehouses %}
+                <option value="{{ w }}">{{ w }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label>Commodity</label>
+            <select name="commodity" class="form-control">
+                <option value="">All</option>
+                {% for c in commodities %}
+                <option value="{{ c }}">{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-12 mt-3">
+            <button class="btn btn-primary">Calculate</button>
+        </div>
+    </form>
+
+    {% if summary %}
+    <div class="alert alert-info">
+        <strong>Total Rental up to {{ summary.filters.date }}:</strong> ₹{{ summary.total_rental }}<br>
+        <strong>Net Stock as of {{ summary.filters.date }}:</strong> {{ summary.last_net_qty }} kg<br>
+        <strong>Stockist:</strong> {{ summary.filters.stockist_name }},
+        <strong>Warehouse:</strong> {{ summary.filters.warehouse }},
+        <strong>Commodity:</strong> {{ summary.filters.commodity }}
+    </div>
+    {% endif %}
+
+    {% if data %}
+    <div class="table-responsive">
+        <div class="mb-3">
+    <button class="btn btn-outline-success btn-sm" onclick="exportExcel()">Export Excel</button>
+    <button class="btn btn-outline-danger btn-sm" onclick="exportPDF()">Export PDF</button>
+    <a href="/stockist/dashboard" class="btn btn-outline-dark btn-sm float-end">← Back to Dashboard</a>
+</div>
+
+<form id="exportForm" method="POST" style="display: none;">
+    <input type="hidden" name="data" id="exportData">
+    <input type="hidden" name="summary" id="exportSummary">
+</form>
+
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Warehouse</th>
+                    <th>Commodity</th>
+                    <th>Quantity (kg, cum.)</th>
+                    <th>Exit Quantity (kg, cum.)</th>
+                    <th>Net Quantity (kg, cum.)</th>
+                    <th>Rental (₹/day)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr>
+                    <td>{{ row.date }}</td>
+                    <td>{{ row.warehouse }}</td>
+                    <td>{{ row.commodity }}</td>
+                    <td>{{ row.quantity }}</td>
+                    <td>{{ row.exit_quantity }}</td>
+                    <td>{{ row.net_quantity }}</td>
+                    <td>{{ row.rental }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+<script>
+function exportExcel() {
+    const data = {{ data|tojson|safe }};
+    document.getElementById('exportData').value = JSON.stringify(data);
+    document.getElementById('exportForm').action = "{{ url_for('rental_calculator.export_excel') }}";
+    document.getElementById('exportForm').submit();
+}
+
+function exportPDF() {
+    const data = {{ data|tojson|safe }};
+    const summary = {{ summary|tojson|safe }};
+    document.getElementById('exportData').value = JSON.stringify(data);
+    document.getElementById('exportSummary').value = JSON.stringify(summary);
+    document.getElementById('exportForm').action = "{{ url_for('rental_calculator.export_pdf') }}";
+    document.getElementById('exportForm').submit();
+}
+</script>
+
+</body>
+</html>

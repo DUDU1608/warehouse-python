@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Loan Repayment</title>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f8fb; }
+        .container { max-width: 480px; margin-top: 56px; background: #fff; border-radius: 12px; box-shadow: 0 2px 18px #c8d0e7; padding: 32px 32px 18px; }
+        h3 { color: #1e3564; font-weight: 700; margin-bottom: 20px; }
+        label { font-weight: 500; }
+        .btn { min-width: 120px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h3>Edit Loan Repayment</h3>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" name="date" id="date" class="form-control" required
+                   value="{{ repayment.date.strftime('%Y-%m-%d') if repayment.date else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="amount" class="form-label">Amount (₹)</label>
+            <input type="number" name="amount" id="amount" class="form-control" step="0.01" required
+                   value="{{ repayment.amount }}">
+        </div>
+        <div class="mb-3">
+            <label for="interest_rate" class="form-label">Interest Rate (%)</label>
+            <input type="number" name="interest_rate" id="interest_rate" class="form-control" step="0.01" required
+                   value="{{ repayment.interest_rate }}">
+        </div>
+        <div class="d-flex justify-content-between">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ url_for('loanrepayment.list_loan_repayment') }}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>
+

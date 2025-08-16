@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Loan Repayment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { max-width: 520px; margin-top: 48px; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px #e1e7f0; padding: 30px 34px;}
+        .form-label { font-weight: 500; }
+        h3 { color: #0a3871; font-weight: 600; margin-bottom: 26px; text-align: center; }
+        .btn-primary { min-width: 130px; }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <h3 class="mb-3">Add Loan Repayment</h3>
+    <form method="POST">
+        <div class="mb-3">
+            <label>Date</label>
+            <input type="date" name="date" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label>Amount</label>
+            <input type="number" step="0.01" name="amount" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label>Interest rate (%)</label>
+            <input type="number" step="0.01" name="interest_rate" class="form-control" required>
+        </div>
+        <button class="btn btn-primary">Add Repayment</button>
+        <a href="{{ url_for('company_dashboard.finance_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </form>
+</div>
+</body>
+</html>

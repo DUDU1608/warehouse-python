@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Warehouse App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Optional: Google Fonts for nicer headings -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(120deg, #b1c5ee 0%, #f3f7fc 100%);
+            min-height: 100vh;
+            font-family: 'Montserrat', Arial, sans-serif;
+        }
+        .login-container {
+            max-width: 370px;
+            margin: 90px auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 6px 24px #bdd0f3;
+            padding: 38px 32px 32px 32px;
+            text-align: center;
+        }
+        .login-title {
+            font-family: 'Montserrat', Arial, sans-serif;
+            color: #2b498a;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 28px;
+            letter-spacing: 1px;
+        }
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #b1b7c5;
+            padding: 12px;
+            font-size: 1.08rem;
+            margin-bottom: 18px;
+            background: #f6f8fc;
+            transition: border .2s;
+        }
+        .form-control:focus {
+            border: 1.5px solid #4973c9;
+            box-shadow: 0 0 0 0.18rem #bfd4f7;
+            background: #fff;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 11px 0;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #4973c9, #64b3f4);
+            color: #fff;
+            font-size: 1.12rem;
+            font-weight: 600;
+            letter-spacing: .5px;
+            border: none;
+            box-shadow: 0 2px 12px #c7d3ec90;
+            margin-top: 6px;
+            transition: background .18s;
+        }
+        .login-btn:hover {
+            background: linear-gradient(90deg, #274c97, #4ea6f3);
+        }
+        .form-label {
+            font-weight: 500;
+            color: #274c97;
+            text-align: left;
+            width: 100%;
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-title">Warehouse Login</div>
+        <form method="POST" autocomplete="off">
+            <div class="mb-2 text-start">
+                <label class="form-label" for="mobile">Mobile Number</label>
+                <input type="text" name="mobile" id="mobile" class="form-control" placeholder="Enter Mobile" maxlength="15" required>
+            </div>
+            <div class="mb-2 text-start">
+                <label class="form-label" for="password">Password</label>
+                <input type="password" name="password" id="password" class="form-control" placeholder="Enter Password" required>
+            </div>
+            <button type="submit" class="login-btn">Login</button>
+        </form>
+    </div>
+</body>
+{% include "_admin_socket_alert.html" %}
+</html>
+
