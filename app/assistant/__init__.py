@@ -12,47 +12,49 @@ from flask import (
     redirect,
     current_app,
 )
-from flask_login import current_user
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from sqlalchemy import desc
 
 from app import db
 from app.models import ChatSession, ChatMessage, User, Seller, Stockist
 
-# --------------------------------------------------------------------
-# Socket.IO: created here; initialized in app.create_app(...) via
-# assistant_socketio.init_app(app, message_queue=app.config.get("REDIS_URL"))
-# --------------------------------------------------------------------
-socketio = SocketIO(cors_allowed_origins="*")
+# -----------------------------------------------------------------------------
+# Single, shared Socket.IO instance
+# (app/__init__.py must: from app.assistant import assistant_bp, socketio as assistant_socketio
+#  then: assistant_socketio.init_app(app, cors_allowed_origins="*"))
+# -----------------------------------------------------------------------------
+socketio = SocketIO(cors_allowed_origins="*", ping_interval=25, ping_timeout=60)
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/assistant")
 
-# --------------------------------------------------------------------
-# Text & constants
-# --------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Text templates (Hindi)
+# -----------------------------------------------------------------------------
 WELCOME_TMPL = "{name} जी, स्वागत है! हम आपको एडमिन से जोड़ रहे हैं…"
 NO_ADMIN_FALLBACK = (
     "इस समय कोई एडमिन उपलब्ध नहीं है। कृपया अपना संदेश लिख दें; "
     "आपको उपयुक्त उत्तर बाद में दिया जाएगा जिसे आप बाद में देख सकते हैं।"
 )
 
-# Guards to avoid duplicates across threads/workers
-_pending_timeouts = set()     # sessions with a timer running
-_fallback_fired = set()       # sessions where fallback already posted
+# -----------------------------------------------------------------------------
+# Guards / timers to prevent duplicate fallback messages
+# -----------------------------------------------------------------------------
+_pending_timeouts = set()  # sessions with an active 60s timer
+_fallback_fired = set()    # sessions where fallback was already posted
 _timeouts_lock = Lock()
 _fallback_lock = Lock()
 
-# --------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Helpers
-# --------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 def room_name(session_id: int) -> str:
     return f"chat_session_{session_id}"
 
 
 def _authorized_for_session(s: ChatSession) -> bool:
     """
-    Admin can see all; user can see only his/her own mobile session.
-    Uses flask session flags you already set during auth.
+    User can act only on their own sessions; admins can act on any session.
     """
     if session.get("is_admin"):
         return True
@@ -61,6 +63,9 @@ def _authorized_for_session(s: ChatSession) -> bool:
 
 
 def get_or_create_account_session(user_mobile: str) -> ChatSession:
+    """
+    Find most recent OPEN session for a user; else create new one.
+    """
     s = (
         ChatSession.query.filter_by(user_mobile=user_mobile, status="open")
         .order_by(desc(ChatSession.created_at))
@@ -68,13 +73,39 @@ def get_or_create_account_session(user_mobile: str) -> ChatSession:
     )
     if s:
         return s
-    s = ChatSession(user_mobile=user_mobile, status="open", last_activity=datetime.utcnow())
+    s = ChatSession(user_mobile=user_mobile)
     db.session.add(s)
     db.session.commit()
     return s
 
 
+def _display_name_for_mobile(mobile: Optional[str]) -> str:
+    """
+    Prefer Seller.name, then Stockist.name, then User.name; fallback to the mobile itself.
+    """
+    if not mobile:
+        return "यूज़र"
+    m = str(mobile).strip()
+
+    seller = Seller.query.filter_by(mobile=m).first()
+    if seller and seller.name:
+        return seller.name
+
+    stockist = Stockist.query.filter_by(mobile=m).first()
+    if stockist and stockist.name:
+        return stockist.name
+
+    user = User.query.filter_by(mobile=m).first()
+    if user and (user.name or user.mobile):
+        return user.name or user.mobile
+
+    return m
+
+
 def _has_fallback_in_db(session_id: int) -> bool:
+    """
+    Check if the 'no admin available' message already exists in DB for this session.
+    """
     return (
         db.session.query(ChatMessage.id)
         .filter(
@@ -87,18 +118,15 @@ def _has_fallback_in_db(session_id: int) -> bool:
     )
 
 
-def _schedule_admin_timeout(session_id: int) -> None:
+def _schedule_admin_timeout(session_id: int):
     """
-    After 60s, if no admin joined and fallback not yet posted, post it ONCE.
-    Uses socketio.start_background_task so it works with eventlet/gevent/threading.
+    After 60 seconds, if no admin has joined/assigned and no fallback yet, post fallback ONCE.
     """
-    # If already posted (or found in DB), mark and skip
     with _fallback_lock:
         if session_id in _fallback_fired or _has_fallback_in_db(session_id):
             _fallback_fired.add(session_id)
             return
 
-    # Ensure only one timer per session
     with _timeouts_lock:
         if session_id in _pending_timeouts:
             return
@@ -106,15 +134,14 @@ def _schedule_admin_timeout(session_id: int) -> None:
 
     app_obj = current_app._get_current_object()
 
-    def worker(sid: int, _app):
-        # Sleep without blocking workers
+    def worker(sid: int, app_obj):
         socketio.sleep(60)
-        with _app.app_context():
+        with app_obj.app_context():
             try:
                 s = ChatSession.query.get(sid)
                 if not s:
                     return
-                # If an admin joined or fallback already there, skip
+                # If an admin joined/assigned, or fallback present, skip
                 if s.assigned_agent or _has_fallback_in_db(sid):
                     return
 
@@ -142,57 +169,37 @@ def _schedule_admin_timeout(session_id: int) -> None:
     socketio.start_background_task(worker, session_id, app_obj)
 
 
-def _lookup_user_name(mobile: Optional[str]) -> Optional[str]:
-    if not mobile:
-        return None
-    u = User.query.filter_by(mobile=str(mobile).strip()).first()
-    return (u.name or u.mobile) if u else None
-
-
-def _display_name_for_mobile(mobile: Optional[str]) -> str:
+def _post_welcome_and_connecting(s: ChatSession):
     """
-    Prefer Seller.name, then Stockist.name, then User.name, else the mobile itself.
-    """
-    if not mobile:
-        return "यूज़र"
-    m = str(mobile).strip()
-
-    seller = Seller.query.filter_by(mobile=m).first()
-    if seller and seller.name:
-        return seller.name
-
-    stockist = Stockist.query.filter_by(mobile=m).first()
-    if stockist and stockist.name:
-        return stockist.name
-
-    user = User.query.filter_by(mobile=m).first()
-    if user and (user.name or user.mobile):
-        return user.name or user.mobile
-
-    return m
-
-
-def _post_welcome_and_connecting(s: ChatSession) -> None:
-    """
-    Send a welcome with the actual user's name, alert admins, and start the 60s fallback timer.
+    Send the welcome with the ACTUAL user's name (from DB),
+    alert admins, and schedule the one-time fallback timer.
     """
     name = _display_name_for_mobile(s.user_mobile) or s.user_mobile or "यूज़र"
     welcome = WELCOME_TMPL.format(name=name)
 
-    # Persist and emit welcome once
     db.session.add(ChatMessage(session_id=s.id, sender_type="system", message=welcome))
     db.session.commit()
     emit("message", {"sender": "system", "text": welcome}, room=room_name(s.id))
 
-    # Alert admins (toast) and start fallback timer once
-    emit("agent_alert", {"session_id": s.id, "user_mobile": s.user_mobile}, room="agents")
+    # Alert all admins (they should have joined the "agents" room from their console)
+    emit(
+        "agent_alert",
+        {"session_id": s.id, "user_mobile": s.user_mobile},
+        room="agents",
+    )
+
+    # Start 60s fallback timer (only once)
     _schedule_admin_timeout(s.id)
 
-# --------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Pages
-# --------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 @assistant_bp.route("/account", endpoint="account_chat")
 def account_chat():
+    """
+    User chat page (only for logged-in users).
+    """
     user_mobile = session.get("mobile")
     if not user_mobile:
         return redirect("/user/login?next=/assistant/account")
@@ -203,7 +210,6 @@ def account_chat():
         .order_by(ChatMessage.created_at.asc())
         .all()
     )
-
     user_display_name = _display_name_for_mobile(user_mobile)
 
     return render_template(
@@ -217,6 +223,9 @@ def account_chat():
 
 @assistant_bp.route("/admin", endpoint="admin_console")
 def admin_console():
+    """
+    Admin console showing sessions from last 7 days.
+    """
     if not session.get("is_admin"):
         return redirect("/login?next=/assistant/admin")
 
@@ -227,6 +236,7 @@ def admin_console():
         .all()
     )
 
+    # Build mobile -> display name map using same helper (names instead of numbers in UI)
     mobiles = {s.user_mobile for s in sessions if s.user_mobile}
     names_map = {m: _display_name_for_mobile(m) for m in mobiles}
 
@@ -235,6 +245,9 @@ def admin_console():
 
 @assistant_bp.route("/api/session/<int:sid>/messages", endpoint="fetch_messages")
 def fetch_messages(sid: int):
+    """
+    Admin-only: fetch full message history for a session.
+    """
     if not session.get("is_admin"):
         return redirect("/login?next=/assistant/admin")
     msgs = (
@@ -248,7 +261,7 @@ def fetch_messages(sid: int):
             "sender_type": m.sender_type,
             "sender_id": m.sender_id,
             "message": m.message,
-            "created_at": m.created_at.isoformat() if m.created_at else None,
+            "created_at": m.created_at.isoformat(),
         }
         for m in msgs
     ]
@@ -257,8 +270,12 @@ def fetch_messages(sid: int):
 
 @assistant_bp.route("/close/<int:sid>", methods=["POST"], endpoint="close_chat")
 def close_chat(sid: int):
+    """
+    Admin can close an open chat; notify both sides.
+    """
     if not session.get("is_admin"):
         return redirect("/login?next=/assistant/admin")
+
     s = ChatSession.query.get_or_404(sid)
     if s.status != "closed":
         s.status = "closed"
@@ -270,6 +287,7 @@ def close_chat(sid: int):
             )
         )
         db.session.commit()
+
         # Notify both sides to update UI
         socketio.emit(
             "status_update", {"session_id": sid, "status": "closed"}, room=room_name(sid)
@@ -282,13 +300,18 @@ def close_chat(sid: int):
             {"sender": "system", "text": "यह चैट एडमिन द्वारा बंद कर दी गई है।"},
             room=room_name(sid),
         )
+
     return ("", 204)
 
-# --------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Socket.IO Events
-# --------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 @socketio.on("join")
 def on_join(data):
+    """
+    User (or admin) joins a specific chat room to receive live messages.
+    """
     sid = int(data["session_id"])
     s = ChatSession.query.get(sid)
     if not s or not _authorized_for_session(s):
@@ -298,6 +321,9 @@ def on_join(data):
 
 @socketio.on("leave")
 def on_leave(data):
+    """
+    Leave a specific chat room.
+    """
     sid = int(data["session_id"])
     s = ChatSession.query.get(sid)
     if not s or not _authorized_for_session(s):
@@ -307,6 +333,9 @@ def on_leave(data):
 
 @socketio.on("user_message")
 def on_user_message(data):
+    """
+    Handle user-sent message. First message escalates: welcome + admin alert + fallback timer.
+    """
     sid = int(data["session_id"])
     text = (data.get("text") or "").strip()
     if not text:
@@ -316,7 +345,7 @@ def on_user_message(data):
     if not s or not _authorized_for_session(s):
         return
 
-    # If closed, don't accept user messages; inform once
+    # If closed, don't allow further user messages
     if s.status != "open":
         emit(
             "message",
@@ -334,14 +363,14 @@ def on_user_message(data):
     db.session.commit()
     emit("message", {"sender": "user", "text": text}, room=room_name(sid))
 
-    # First message → escalate & welcome
-    if not getattr(s, "escalated", False):
+    # First message → escalate
+    if not s.escalated:
         s.escalated = True
         db.session.commit()
         _post_welcome_and_connecting(s)
         return
 
-    # Already escalated → ping admins; schedule fallback only if never fired
+    # Already escalated → ping admins; ensure fallback only if not posted yet
     emit("agent_alert", {"session_id": s.id, "user_mobile": s.user_mobile}, room="agents")
     with _fallback_lock:
         if (s.id not in _fallback_fired) and (not _has_fallback_in_db(s.id)):
@@ -350,10 +379,19 @@ def on_user_message(data):
 
 @socketio.on("agent_join")
 def on_agent_join(data):
+    """
+    Admin joins:
+      - Always join 'agents' room for global alerts
+      - Optionally join a specific chat room if session_id is provided
+      - Mark assigned_agent on first join & notify the user
+    """
     if not session.get("is_admin"):
         return
+
+    # Join global admin alerts room
     join_room("agents")
 
+    # If a session is specified, join its room and bind agent
     if "session_id" in data:
         sid = int(data["session_id"])
         s = ChatSession.query.get(sid)
@@ -378,13 +416,16 @@ def on_agent_join(data):
                 room=room_name(sid),
             )
 
-        # prevent future fallbacks
+        # Prevent future fallback
         with _fallback_lock:
             _fallback_fired.add(s.id)
 
 
 @socketio.on("agent_message")
 def on_agent_message(data):
+    """
+    Admin sends a message to a specific chat room.
+    """
     if not session.get("is_admin"):
         return
 
@@ -397,7 +438,7 @@ def on_agent_message(data):
     if not s:
         return
 
-    # Don't allow sending into closed chats (keeps logic clean)
+    # Disallow sending into closed chats
     if s.status != "open":
         emit(
             "message",
@@ -418,11 +459,7 @@ def on_agent_message(data):
     s.last_activity = datetime.utcnow()
     db.session.commit()
 
-    emit(
-        "message",
-        {"sender": "agent", "text": text, "agent": sender_id},
-        room=room_name(sid),
-    )
+    emit("message", {"sender": "agent", "text": text, "agent": sender_id}, room=room_name(sid))
 
     # ensure fallback won't post later
     with _fallback_lock:
