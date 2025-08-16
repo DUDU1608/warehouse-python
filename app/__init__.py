@@ -205,18 +205,49 @@ def create_app():
     except Exception as e:
         log.debug("User blueprints not fully registered: %s", e)
 
-    # Assistant (chat)
+    # ----------------- Assistant (chat) -----------------
+from importlib import import_module
+
+assistant_module = None
+last_err = None
+for dotted in ("app.assistant", "app.app.assistant"):  # try both layouts
     try:
-        from app.assistant import assistant_bp, socketio as assistant_socketio
-        app.register_blueprint(assistant_bp)
-        # Attach the Socket.IO instance created in app.assistant
-        assistant_socketio.init_app(
-            app,
-            cors_allowed_origins="*",
-            message_queue=app.config.get("REDIS_URL"),
-        )
+        assistant_module = import_module(dotted)
+        app.logger.info("Assistant module loaded from %s", dotted)
+        break
     except Exception as e:
-        log.debug("Assistant (chat) not initialized: %s", e)
+        last_err = e
+
+if assistant_module is None:
+    app.logger.exception(
+        "Failed to import assistant module from app.assistant OR app.app.assistant"
+    )
+    raise last_err  # fail fast so /socket.io doesn't silently 404
+
+assistant_bp = getattr(assistant_module, "assistant_bp", None)
+assistant_socketio = getattr(assistant_module, "socketio", None)
+
+if assistant_bp is None or assistant_socketio is None:
+    raise RuntimeError("assistant module missing 'assistant_bp' or 'socketio'.")
+
+# Register blueprint
+app.register_blueprint(assistant_bp)
+
+# Initialize the SAME Socket.IO instance; only pass message_queue if configured
+init_kwargs = {"cors_allowed_origins": "*"}
+mq_url = app.config.get("REDIS_URL")
+if mq_url:
+    init_kwargs["message_queue"] = mq_url
+assistant_socketio.init_app(app, **init_kwargs)
+
+# (Optional) quick sanity endpoint — remove later
+@app.get("/__sio")
+def __sio():
+    return {
+        "socketio_attached": bool(app.extensions.get("socketio")),
+        "assistant_path": assistant_module.__name__,
+    }, 200
+
 
     # ----------------- DB bootstrap (optional; use migrations in prod) -----------------
     # If you still want auto-create for dev (SQLite), set CREATE_TABLES_ON_START=1
