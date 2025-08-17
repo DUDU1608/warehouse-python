@@ -122,6 +122,18 @@
       padding: 18px; height:100%; box-shadow: var(--shadow);
       transition: .18s ease transform, .18s ease box-shadow;
     }
+
+    .flash-wrap{
+    background:#fee2e2;           /* soft red bg */
+    border:1px solid #fecaca;     /* light red border */
+    border-radius:12px;
+    padding:.75rem 1rem;
+  }
+  .flash-red{
+    color:#b91c1c;                /* strong red */
+    font-weight:900;              /* bold */
+    /* removed animation */
+  }
     .feature:hover{ transform: translateY(-4px); box-shadow: 0 16px 36px rgba(2,8,23,.10); }
     .feature .f-icon{
       width:44px; height:44px; border-radius:12px; display:flex;align-items:center;justify-content:center;
@@ -166,51 +178,38 @@
       background: linear-gradient(120deg, var(--brand), var(--blue));
     }
 
-    /* Partners */
-    .logo-tile{
-      height:54px; border-radius:12px; background:#fff; border:1px solid var(--line); box-shadow: var(--shadow);
-      display:grid; place-items:center; color:#64748b; font-weight:800;
-    }
+    /* Bigger, roomier tiles */
+  .logo-tile{
+    height: 120px;                /* was ~54–80px */
+    padding: 18px;                /* more breathing room */
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 26px rgba(2,8,23,.06);
+    display: grid; place-items: center;
+  }
 
-    /* FAQ */
-    .accordion-button{ font-weight:800; }
-    .accordion-button:focus{ box-shadow:none; }
-    .accordion-item{ border-radius:14px!important; overflow:hidden; border:1px solid var(--line)!important; }
+  /* Large logos but preserve aspect ratio */
+  .partner-logo{
+    max-height: 88px;             /* was ~42px */
+    width: auto;
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    transition: transform .15s ease;
+  }
 
-    /* Alert strip (chat guidance) */
-    .flash-wrap{ background:#fff1f2; border:1px solid #ffffff; border-radius:12px; padding:.75rem 1rem; }
-    .flash-red{ color: #42ee09; font-weight:900; animation:flash 1.2s ease-in-out infinite; }
-    @keyframes flash{ 0%,100%{opacity:1} 50%{opacity:.35} }
+  /* Subtle hover for desktop */
+  @media (hover:hover){
+    .logo-tile:hover .partner-logo{ transform: translateY(-2px); }
+  }
 
-    /* Footer */
-    footer{ background:#ffffff; border-top:1px solid var(--line); padding:24px 0; color:#475569; }
-    footer a{ color:#374151; text-decoration:none; }
-    footer a:hover{ text-decoration:underline; }
-
-    /* Floating chat/login CTA */
-    .floating-cta{
-      position:fixed; right:16px; bottom:16px; z-index:1000;
-      display:flex; gap:10px; align-items:center;
-    }
-    .pulse{
-      position:absolute; inset:0; border-radius:999px; border:2px solid rgba(34,197,94,.35);
-      animation:pulse 2s linear infinite;
-    }
-    @keyframes pulse{ 0%{ transform:scale(.9); opacity:.8;} 50%{ transform:scale(1.06); opacity:.2;} 100%{ transform:scale(.9); opacity:.8;} }
-    .chat-fab{
-      position:relative; width:60px; height:60px; border-radius:999px; border:none;
-      background:linear-gradient(135deg, var(--brand), var(--blue)); color:#fff;
-      box-shadow:0 12px 28px rgba(3,105,161,.35); display:grid; place-items:center; font-size:1.5rem;
-    }
-    .chat-label{
-      background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow);
-      font-weight:800; color:#1f2937;
-    }
-
-    @media (prefers-reduced-motion: reduce){
-      *{ transition:none!important; animation:none!important; }
-    }
-  </style>
+  /* Responsive tweak: slightly smaller on very small screens */
+  @media (max-width: 420px){
+    .logo-tile{ height: 100px; padding: 14px; }
+    .partner-logo{ max-height: 72px; }
+  }
+</style>
 </head>
 <body class="bg-blobs">
 
@@ -456,17 +455,40 @@
   </section>
 
   <!-- PARTNERS -->
-  <section class="py-4">
-    <div class="container">
-      <h4 class="section-title mb-3">हमारे पार्टनर्स</h4>
-      <div class="row g-3">
-        <div class="col-6 col-md-3"><div class="logo-tile">Partner A</div></div>
-        <div class="col-6 col-md-3"><div class="logo-tile">Partner B</div></div>
-        <div class="col-6 col-md-3"><div class="logo-tile">Partner C</div></div>
-        <div class="col-6 col-md-3"><div class="logo-tile">Partner D</div></div>
+<section class="py-4">
+  <div class="container">
+    <h4 class="section-title mb-3">हमारे पार्टनर्स</h4>
+    <div class="row g-3 align-items-center">
+      <!-- Arya.ag -->
+      <div class="col-6 col-md-4">
+        <a class="logo-tile p-2" href="https://arya.ag/" target="_blank" rel="noopener">
+          <img src="/partners/arya.svg"
+               onerror="this.src='/static/partners/arya.png'"
+               alt="Arya.ag" class="partner-logo">
+        </a>
+      </div>
+
+      <!-- Bank of India -->
+      <div class="col-6 col-md-4">
+        <a class="logo-tile p-2" href="https://bankofindia.co.in/" target="_blank" rel="noopener">
+          <img src="/partners/bank-of-india.svg"
+               onerror="this.src='/static/partners/bank-of-india.png'"
+               alt="Bank of India" class="partner-logo">
+        </a>
+      </div>
+
+      <!-- State Bank of India (SBI) -->
+      <div class="col-6 col-md-4">
+        <a class="logo-tile p-2" href="https://www.onlinesbi.sbi/" target="_blank" rel="noopener">
+          <img src="/partners/sbi.svg"
+               onerror="this.src='/static/partners/sbi.png'"
+               alt="State Bank of India (SBI)" class="partner-logo">
+        </a>
       </div>
     </div>
-  </section>
+  </div>
+</section>
+
 
   <!-- FAQ -->
   <section class="py-4" style="background:#fff">
@@ -643,3 +665,5 @@
   </script>
 </body>
 </html>
+
+
