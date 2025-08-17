@@ -5,153 +5,220 @@
   <title>अनुनय एग्रो | वेयरहाउस पोर्टल</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Bootstrap & Icons -->
+  <!-- Fonts + Bootstrap + Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
 
   <style>
     :root{
-      --brand:#2c7a3f;            /* agriculture green */
-      --brand-2:#3aa35a;
-      --accent:#f39c12;           /* warm orange */
-      --ink:#1f2937;              /* dark text */
-      --muted:#6b7280;
-      --line:#e9eef3;
-      --bg-1:#f7fbff;
-      --bg-2:#f3f9f5;
+      --ink:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
       --card:#ffffff;
-      --radius:14px;
-      --shadow:0 10px 28px rgba(0,0,0,.08);
+      --brand:#16a34a;     /* emerald */
+      --brand-2:#22c55e;   /* light emerald */
+      --accent:#f59e0b;    /* amber */
+      --accent-2:#ef4444;  /* red */
+      --blue:#3b82f6;
+      --violet:#8b5cf6;
+      --radius:16px;
+      --shadow:0 10px 26px rgba(2,8,23,.10);
+      --shadow-lg:0 30px 80px rgba(2,8,23,.18);
     }
 
+    * { font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+
+    /* --- COLORFUL BACKGROUND --- */
     body{
-      font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
       color: var(--ink);
-      background:
-        radial-gradient(1000px 700px at 110% -10%, rgba(60,179,113,.08), transparent 60%),
-        radial-gradient(800px 600px at -10% 110%, rgba(139,195,74,.08), transparent 50%),
-        linear-gradient(120deg, var(--bg-1) 0%, var(--bg-2) 100%);
       min-height:100vh;
-    }
-    .grid-bg::before{
-      content:"";
-      position:fixed; inset:0; pointer-events:none; z-index:0;
       background:
-        linear-gradient(to right, rgba(0,0,0,.035) 1px, transparent 1px) 0 0 / 28px 28px,
-        linear-gradient(to bottom, rgba(0,0,0,.035) 1px, transparent 1px) 0 0 / 28px 28px;
-      mask-image: radial-gradient(70% 70% at 50% 30%, #000 60%, transparent 100%);
+        radial-gradient(1200px 700px at 10% -10%, rgba(59,130,246,.25), transparent 60%),
+        radial-gradient(1000px 700px at 110% 20%, rgba(139,92,246,.22), transparent 55%),
+        radial-gradient(900px 600px at 20% 110%, rgba(34,197,94,.20), transparent 60%),
+        linear-gradient(180deg, #f8fbff 0%, #f5f9f6 60%, #f9fafb 100%);
+      overflow-x:hidden;
     }
+    /* animated gradient blobs */
+    .bg-blobs::before, .bg-blobs::after{
+      content:""; position:fixed; z-index:-1; filter: blur(50px); opacity:.40;
+      width: 480px; height:480px; border-radius:999px; left:-120px; top:-140px;
+      background: conic-gradient(from 90deg, #22c55e, #3b82f6, #8b5cf6, #22c55e);
+      animation: spin 28s linear infinite;
+    }
+    .bg-blobs::after{
+      width: 560px; height:560px; right:-140px; left:auto; top:40vh;
+      background: conic-gradient(from -40deg, #f59e0b, #ef4444, #3b82f6, #f59e0b);
+      animation: spin 32s linear infinite reverse;
+    }
+    @keyframes spin{ to{ transform: rotate(1turn);} }
 
-    /* NAVBAR */
-    .navbar{
-      background: rgba(255,255,255,.9) !important;
-      backdrop-filter: saturate(130%) blur(8px);
-      box-shadow: 0 6px 24px rgba(0,0,0,.06);
-      position: sticky; top: 0; z-index: 10;
+    /* decorative wave at bottom */
+    .wave{
+      position:relative; margin-top: -40px;
     }
-    .brand-logo{ height:52px; width:auto; border-radius:8px; }
-    .brand-title{ font-weight:800; letter-spacing:.2px; color:var(--ink); margin:0; }
-    .brand-sub{ color:#10b981; font-size:.85rem; margin-top:-2px; }
+    .wave svg{ display:block; width:100%; height:76px; }
+
+    /* Navbar */
+    .navbar{
+      background: rgba(255,255,255,.9)!important;
+      backdrop-filter: blur(10px) saturate(140%);
+      box-shadow: var(--shadow);
+    }
+    .brand-logo{ height:48px; width:auto; border-radius:10px; }
+    .brand-title{ font-weight:800; letter-spacing:.2px; color:#0f172a; margin:0; }
+    .brand-sub{ color:#22c55e; font-size:.85rem; margin-top:-2px; }
 
     .btn-brand{
       background: linear-gradient(90deg, var(--brand), var(--brand-2));
-      color:#fff; border:none; border-radius:10px; padding:10px 16px;
-      box-shadow: 0 10px 22px rgba(42,122,63,.25);
+      color:#fff; border:none; border-radius:12px; padding:10px 16px;
+      box-shadow: 0 10px 22px rgba(34,197,94,.35); font-weight:700;
     }
-    .btn-brand:hover{ opacity:.95; transform: translateY(-1px); }
-
+    .btn-brand:hover{ opacity:.96; transform: translateY(-1px); }
     .btn-outline-brand{
-      border:1px solid var(--brand); color: var(--brand); background:#fff;
-      border-radius: 12px; padding: 12px 18px; font-weight:700;
+      border:1px solid var(--brand); color: var(--brand); background:#fff; border-radius:12px; font-weight:700;
     }
-    .btn-outline-brand:hover{ background:#eef7f0; }
+    .btn-outline-brand:hover{ background:#ecfdf5; }
 
-    .lang-toggle .btn{ border-radius:10px; }
-    .lang-toggle .btn.active{ background:#e9eef3; border-color:#e9eef3; }
+    .chip{ background:#f1f5f9; border:1px solid var(--line); color:#334155; border-radius:999px; padding:.35rem .7rem; font-weight:600; }
 
-    /* HERO */
-    .hero{ position: relative; z-index:1; padding: 42px 0 18px; }
+    /* Hero */
+    .hero{ padding: 42px 0 0; }
     .hero-card{
-      background: var(--card);
-      border:1px solid var(--line);
+      background: rgba(255,255,255,.8);
+      border:1px solid rgba(255,255,255,.7);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-lg);
       padding: 28px;
+      backdrop-filter: blur(6px);
     }
     .hero h1{
-      font-size: clamp(1.4rem, 2.5vw, 2rem);
-      margin: 0 0 8px;
-      color: var(--brand);
-      font-weight: 800;
+      font-size: clamp(1.7rem, 3.2vw, 2.35rem);
+      margin: 0 0 8px; color: #052e16; font-weight: 900;
     }
-    .hero p.lead{ color: var(--muted); font-size: 1.05rem; margin-bottom: 18px; }
-    .hero-cta .btn{ border-radius: 12px; padding: 12px 18px; font-weight:700; }
+    .hero .lead{ color: var(--muted); font-size:1.06rem; }
 
-    /* STATS */
+    /* Stats */
     .stat{
       display:flex; gap:12px; align-items:center;
-      background:#ffffff; border:1px solid var(--line);
+      background:#fff; border:1px solid var(--line);
       border-radius:14px; padding:16px 18px; height:100%;
-      box-shadow: 0 6px 18px rgba(0,0,0,.05);
+      box-shadow: var(--shadow);
     }
     .stat .icon{
       width:48px; height:48px; border-radius:12px;
-      display: grid; place-items: center;
-      color: var(--brand); background:#eef7f0; font-size:1.25rem;
-      border:1px solid #d9eee0;
+      display:grid; place-items:center;
+      color: var(--brand); background:#ecfdf5; font-size:1.3rem; border:1px solid #bbf7d0;
     }
-    .stat h6{ margin:0; font-weight:700; }
-    .stat .val{ color: var(--muted); margin-top:2px; }
+    .stat h6{ margin:0; font-weight:800; }
+    .stat .val{ color: var(--muted); margin-top:2px; font-weight:700; }
 
-    /* FEATURE CARDS */
+    /* Sections */
+    .section-title{ font-weight:900; color:#0b1324; letter-spacing:.2px; }
+
     .feature{
-      background: var(--card);
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 18px; height:100%;
+      background: #ffffff; border:1px solid var(--line); border-radius: var(--radius);
+      padding: 18px; height:100%; box-shadow: var(--shadow);
       transition: .18s ease transform, .18s ease box-shadow;
-      box-shadow: 0 6px 18px rgba(0,0,0,.06);
-      text-align:left;
     }
-    .feature:hover{ transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,.10); }
-    .feature .f-head{ display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+    .feature:hover{ transform: translateY(-4px); box-shadow: 0 16px 36px rgba(2,8,23,.10); }
     .feature .f-icon{
-      width:42px; height:42px; border-radius:10px; display:flex;align-items:center;justify-content:center;
-      background:#eef7f0; color:var(--brand); font-size:1.15rem; border:1px solid #d9eee0;
+      width:44px; height:44px; border-radius:12px; display:flex;align-items:center;justify-content:center;
+      color:#0ea5e9; background:#eff6ff; font-size:1.2rem; border:1px solid #dbeafe; margin-bottom:8px;
     }
-    .feature p{ color:var(--muted); margin:0; }
+    .feature h5{ font-weight:800; }
 
-    /* CALL-TO-ACTION CARD */
-    .cta-card{
-      background:#fff; border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow: var(--shadow); padding: 22px;
+    /* Tools grid (colorful cards) */
+    .tool{
+      border-radius:16px; padding:16px; color:#0f172a; height:100%;
+      border:1px solid rgba(255,255,255,.6); background: rgba(255,255,255,.8);
+      box-shadow: var(--shadow);
+    }
+    .tool .tag{ font-size:.78rem; font-weight:800; padding:.2rem .5rem; border-radius:999px; }
+    .tag-green{ background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+    .tag-amber{ background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+    .tag-sky{ background:#f0f9ff; color:#075985; border:1px solid #bae6fd; }
+    .tool h6{ font-weight:800; margin-top:.35rem; }
+
+    /* Steps */
+    .step-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; height:100%; box-shadow: var(--shadow); }
+    .step-num{ width:34px; height:34px; border-radius:999px; background:linear-gradient(90deg, var(--blue), var(--violet)); color:#fff; display:grid; place-items:center; font-weight:800; }
+
+    /* Announcements (marquee) */
+    .announce{
+      background: linear-gradient(90deg, #ecfccb, #fef3c7, #fee2e2);
+      border:1px solid #fde68a; border-radius:12px; padding:.75rem;
+      overflow:hidden; position:relative;
+    }
+    .announce .track{
+      white-space:nowrap; position:relative; display:inline-block;
+      animation: marquee 18s linear infinite;
+    }
+    @keyframes marquee{ from{ transform:translateX(0)} to{ transform:translateX(-50%) } }
+
+    /* Testimonials */
+    .testi{
+      background: #ffffff; border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow: var(--shadow); height:100%;
+    }
+    .avatar{
+      width:40px; height:40px; border-radius:999px; display:grid; place-items:center; font-weight:800; color:#fff;
+      background: linear-gradient(120deg, var(--brand), var(--blue));
     }
 
-    /* FOOTER */
-    footer{
-      background: rgba(255,255,255,.95);
-      border-top:1px solid var(--line);
-      padding: 16px 0; color: #4b5563; font-size: .95rem;
+    /* Partners */
+    .logo-tile{
+      height:54px; border-radius:12px; background:#fff; border:1px solid var(--line); box-shadow: var(--shadow);
+      display:grid; place-items:center; color:#64748b; font-weight:800;
     }
-    footer a{ color:#334155; text-decoration:none; }
+
+    /* FAQ */
+    .accordion-button{ font-weight:800; }
+    .accordion-button:focus{ box-shadow:none; }
+    .accordion-item{ border-radius:14px!important; overflow:hidden; border:1px solid var(--line)!important; }
+
+    /* Alert strip (chat guidance) */
+    .flash-wrap{ background:#fff1f2; border:1px solid #ffffff; border-radius:12px; padding:.75rem 1rem; }
+    .flash-red{ color: #42ee09; font-weight:900; animation:flash 1.2s ease-in-out infinite; }
+    @keyframes flash{ 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    /* Footer */
+    footer{ background:#ffffff; border-top:1px solid var(--line); padding:24px 0; color:#475569; }
+    footer a{ color:#374151; text-decoration:none; }
     footer a:hover{ text-decoration:underline; }
+
+    /* Floating chat/login CTA */
+    .floating-cta{
+      position:fixed; right:16px; bottom:16px; z-index:1000;
+      display:flex; gap:10px; align-items:center;
+    }
+    .pulse{
+      position:absolute; inset:0; border-radius:999px; border:2px solid rgba(34,197,94,.35);
+      animation:pulse 2s linear infinite;
+    }
+    @keyframes pulse{ 0%{ transform:scale(.9); opacity:.8;} 50%{ transform:scale(1.06); opacity:.2;} 100%{ transform:scale(.9); opacity:.8;} }
+    .chat-fab{
+      position:relative; width:60px; height:60px; border-radius:999px; border:none;
+      background:linear-gradient(135deg, var(--brand), var(--blue)); color:#fff;
+      box-shadow:0 12px 28px rgba(3,105,161,.35); display:grid; place-items:center; font-size:1.5rem;
+    }
+    .chat-label{
+      background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow);
+      font-weight:800; color:#1f2937;
+    }
 
     @media (prefers-reduced-motion: reduce){
       *{ transition:none!important; animation:none!important; }
     }
   </style>
-
-
-
 </head>
-
-<body class="grid-bg">
+<body class="bg-blobs">
 
   <!-- NAVBAR -->
   <nav class="navbar navbar-expand-lg py-2">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-3" href="/">
-        <img src="/static/images/logo_anunay_agro.png" alt="Anunay Agro Logo" class="brand-logo">
+        <img src="/static/images/logo_anunay_agro.png" alt="Anunay Agro" class="brand-logo">
         <div class="d-flex flex-column">
           <span class="brand-title">Anunay Agro</span>
           <small class="brand-sub">Reducing Post Harvest Wastage</small>
@@ -159,16 +226,25 @@
       </a>
 
       <div class="d-flex align-items-center gap-2 ms-auto">
-        <div class="lang-toggle btn-group me-2" role="group" aria-label="Language switch">
+        <div class="btn-group me-2" role="group" aria-label="Language switch">
           <button class="btn btn-sm btn-outline-secondary active" data-lang="hi" aria-pressed="true">हिं</button>
           <button class="btn btn-sm btn-outline-secondary" data-lang="en" aria-pressed="false">EN</button>
         </div>
-        <a href="{{ url_for('auth.login') }}" class="btn btn-brand">
-          <i class="bi bi-lock-fill me-1"></i> Admin Login
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-brand">
+          <i class="bi bi-person-lock me-1"></i> Admin Login
         </a>
       </div>
     </div>
   </nav>
+
+  <!-- ALERT (Chat guidance) -->
+  <div class="container mt-3">
+    <div class="flash-wrap text-center" role="alert" aria-live="polite">
+      <span class="flash-red">
+        ⚠️ यदि कोई प्रश्न हो, कृपया <strong>चैट</strong> बटन पर क्लिक कर चैट मॉड्यूल का उपयोग करें।
+      </span>
+    </div>
+  </div>
 
   <!-- HERO -->
   <section class="hero">
@@ -180,10 +256,15 @@
             <p class="lead" data-i18n="tagline">
               वेयरहाउस संचालन, रिपोर्ट व ऋण ट्रैकिंग — सब कुछ सुरक्षित और रियल-टाइम में।
             </p>
-            <div class="hero-cta d-flex flex-wrap gap-2">
-              <a href="/user/login" class="btn btn-brand" id="loginBtn" data-i18n="loginCta">लॉगिन करें</a>
+            <div class="d-flex flex-wrap gap-2">
+              <a href="/user/login" class="btn btn-brand" id="loginBtn" data-i18n="loginCta">
+                <i class="bi bi-box-arrow-in-right me-1"></i> लॉगिन करें
+              </a>
               <a href="/how-to" class="btn btn-outline-brand">
                 <i class="bi bi-journal-text me-1"></i> उपयोग गाइड
+              </a>
+              <a href="/faq" class="btn btn-outline-brand">
+                <i class="bi bi-question-circle me-1"></i> FAQ
               </a>
             </div>
           </div>
@@ -194,9 +275,7 @@
                   <div class="icon"><i class="bi bi-box-seam"></i></div>
                   <div>
                     <h6 data-i18n="statStock">कुल स्टॉक</h6>
-                    <div class="val">
-                      <span class="count" data-target="{{ total_stock_mt if total_stock_mt is defined else 5000 }}">0</span> MT
-                    </div>
+                    <div class="val"><span class="count" data-target="{{ total_stock_mt if total_stock_mt is defined else 5000 }}">0</span> MT</div>
                   </div>
                 </div>
               </div>
@@ -213,87 +292,237 @@
                 <div class="stat">
                   <div class="icon"><i class="bi bi-cash-coin"></i></div>
                   <div>
-                    <h6 data-i18n="statLoans">कुल स्टॉकिस्ट</h6>
+                    <h6 data-i18n="statStockists">कुल स्टॉकिस्ट</h6>
                     <div class="val"><span class="count" data-target="{{ loans_outstanding_inr if loans_outstanding_inr is defined else 70 }}">0</span>+</div>
                   </div>
                 </div>
               </div>
-            </div> <!-- stats grid -->
+            </div> <!-- stats -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wave">
+      <svg preserveAspectRatio="none" viewBox="0 0 1440 120"><path fill="#ffffff" d="M0,64L60,90.7C120,117,240,171,360,176C480,181,600,139,720,117.3C840,96,960,96,1080,106.7C1200,117,1320,139,1380,149.3L1440,160L1440,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,60,0L0,0Z"></path></svg>
+    </div>
+  </section>
+
+  <!-- KEY MODULES -->
+  <section class="py-4" style="background:#fff">
+    <div class="container">
+      <h4 class="section-title mb-3">मुख्य मॉड्यूल</h4>
+      <div class="row g-4">
+        <div class="col-12 col-md-4">
+          <a href="/user/login" class="text-decoration-none text-reset">
+            <div class="feature">
+              <div class="f-icon"><i class="bi bi-speedometer2"></i></div>
+              <h5 class="mb-1">सेलर व स्टॉकिस्ट डैशबोर्ड</h5>
+              <p class="mb-0">खरीद, स्टॉक एंट्री, देय/प्राप्तियाँ, ब्याज और रेंट ट्रैकिंग।</p>
+            </div>
+          </a>
+        </div>
+        <div class="col-12 col-md-4">
+          <a href="/user/login" class="text-decoration-none text-reset">
+            <div class="feature">
+              <div class="f-icon"><i class="bi bi-graph-up-arrow"></i></div>
+              <h5 class="mb-1">रिपोर्ट्स व एक्सपोर्ट्स</h5>
+              <p class="mb-0">फ़िल्टर के साथ Excel/PDF—स्टेटमेंट, P&L, ब्रेकईवन, फाइनल रिपोर्ट।</p>
+            </div>
+          </a>
+        </div>
+        <div class="col-12 col-md-4">
+          <a href="/user/login" class="text-decoration-none text-reset">
+            <div class="feature">
+              <div class="f-icon"><i class="bi bi-shield-lock"></i></div>
+              <h5 class="mb-1">ओटीपी आधारित सुरक्षित लॉगिन</h5>
+              <p class="mb-0">Fast2SMS + SSL—पासवर्ड की आवश्यकता नहीं।</p>
+            </div>
+          </a>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <a href="/user/login" class="text-decoration-none text-reset">
+            <div class="feature">
+              <div class="f-icon"><i class="bi bi-currency-rupee"></i></div>
+              <h5 class="mb-1">भुगतान व देय</h5>
+              <p class="mb-0">सटीक देय, रसीदें, समन्वय एवं बकाया की निगरानी।</p>
+            </div>
+          </a>
+        </div>
+        <div class="col-12 col-md-4">
+          <a href="/user/login" class="text-decoration-none text-reset">
+            <div class="feature">
+              <div class="f-icon"><i class="bi bi-truck"></i></div>
+              <h5 class="mb-1">इनवर्ड/आउटवर्ड स्टॉक</h5>
+              <p class="mb-0">बैचवार ट्रैकिंग, स्टैक/लॉट इतिहास, नुकसान नियंत्रण।</p>
+            </div>
+          </a>
+        </div>
+        <div class="col-12 col-md-4">
+          <a href="/user/login" class="text-decoration-none text-reset">
+            <div class="feature">
+              <div class="f-icon"><i class="bi bi-clipboard2-check"></i></div>
+              <h5 class="mb-1">कम्प्लायंस व ऑडिट</h5>
+              <p class="mb-0">दस्तावेज़ अपलोड, वेरिफिकेशन ट्रेल, ऑडिट-रेडी रिपोर्ट्स।</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICK TOOLS -->
+  <section class="py-4">
+    <div class="container">
+      <h4 class="section-title mb-3">त्वरित टूल्स</h4>
+      <div class="row g-4">
+        <div class="col-12 col-md-4">
+          <div class="tool">
+            <span class="tag tag-green">Calculator</span>
+            <h6 class="mt-2">रेंटल कैलकुलेटर</h6>
+            <p class="text-muted mb-2">गोदाम किराया का अनुमान लगाएँ—MT/दिन के हिसाब से।</p>
+            <a class="btn btn-sm btn-outline-brand" href="/stockist/rental-calculator"><i class="bi bi-calculator me-1"></i> खोलें</a>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="tool">
+            <span class="tag tag-amber">Analyzer</span>
+            <h6 class="mt-2">ब्रेकईवन / P&L</h6>
+            <p class="text-muted mb-2">कच्ची लागत, रेंट, ब्याज—सब जोड़कर त्वरित विश्लेषण।</p>
+            <a class="btn btn-sm btn-outline-brand" href="/company/breakeven-calculator"><i class="bi bi-graph-up-arrow me-1"></i> खोलें</a>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="tool">
+            <span class="tag tag-sky">Summary</span>
+            <h6 class="mt-2">स्टॉक सारांश</h6>
+            <p class="text-muted mb-2">लाइव स्टॉक, लोन्स, मार्जिन—वन-स्क्रीन ओवरव्यू।</p>
+            <a class="btn btn-sm btn-outline-brand" href="/stock-summary"><i class="bi bi-list-check me-1"></i> देखें</a>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- FEATURES -->
-  <section class="py-4">
+  <!-- ANNOUNCEMENTS -->
+  <section class="py-2">
     <div class="container">
-      <div class="row g-4 justify-content-center">
-        <div class="col-12 col-md-4">
-
-            <div class="feature h-100">
-              <div class="f-head">
-                <div class="f-icon"><i class="bi bi-speedometer2"></i></div>
-                <h5 class="mb-0" data-i18n="featureDashboard">सेलर व स्टॉकिस्ट डैशबोर्ड</h5>
-              </div>
-              <p data-i18n="featureDashboardDesc">खरीद, स्टॉक एंट्री, ऋण व देय रिपोर्ट आसानी से प्रबंधित करें।</p>
-            </div>
-          </a>
-        </div>
-        <div class="col-12 col-md-4">
-
-            <div class="feature h-100">
-              <div class="f-head">
-                <div class="f-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                <h5 class="mb-0" data-i18n="featureReports">रिपोर्ट्स व एक्सपोर्ट्स</h5>
-              </div>
-              <p data-i18n="featureReportsDesc">शक्तिशाली फ़िल्टर के साथ Excel/PDF में सारांश डाउनलोड करें।</p>
-            </div>
-          </a>
-        </div>
-        <div class="col-12 col-md-4">
-
-            <div class="feature h-100">
-              <div class="f-head">
-                <div class="f-icon"><i class="bi bi-shield-lock"></i></div>
-                <h5 class="mb-0" data-i18n="featureOtp">ओटीपी आधारित सुरक्षित लॉगिन</h5>
-              </div>
-              <p data-i18n="featureOtpDesc">Fast2SMS व SSL द्वारा सुरक्षित। पासवर्ड की आवश्यकता नहीं।</p>
-            </div>
-          </a>
+      <div class="announce">
+        <div class="track">
+          📢 ताज़ा अपडेट: मौसमी आलू 15 अक्टूबर से आने की उम्मीद • गेहूँ भंडारण सलाह अपडेट • सिस्टम अपटाइम 99.9% • नई रिपोर्टिंग विशेषताएँ जोड़ी गईं •
+          📢 ताज़ा अपडेट: मौसमी आलू 15 अक्टूबर से आने की उम्मीद • गेहूँ भंडारण सलाह अपडेट • सिस्टम अपटाइम 99.9% • नई रिपोर्टिंग विशेषताएँ जोड़ी गईं •
         </div>
       </div>
     </div>
   </section>
 
-  <!-- CHAT CTA + TRUST -->
+  <!-- BENEFITS -->
+  <section class="py-4" style="background:#fff">
+    <div class="container">
+      <h4 class="section-title mb-3">क्यों चुनें हमें</h4>
+      <div class="row g-4">
+        <div class="col-12 col-md-3"><div class="feature"><div class="f-icon"><i class="bi bi-cloud-check"></i></div><h6 class="fw-bold">रियल-टाइम डेटा</h6><p>हर एंट्री तुरन्त सभी मॉड्यूल्स में परिलक्षित।</p></div></div>
+        <div class="col-12 col-md-3"><div class="feature"><div class="f-icon"><i class="bi bi-shield-lock"></i></div><h6 class="fw-bold">एंटरप्राइज़ सिक्योरिटी</h6><p>SSL, रोल-आधारित एक्सेस, ऑडिट ट्रेल।</p></div></div>
+        <div class="col-12 col-md-3"><div class="feature"><div class="f-icon"><i class="bi bi-rocket-takeoff"></i></div><h6 class="fw-bold">तेज़ परफॉर्मेंस</h6><p>अनुकूलित क्वेरीज़, कैशिंग, न्यून विलंब।</p></div></div>
+        <div class="col-12 col-md-3"><div class="feature"><div class="f-icon"><i class="bi bi-headset"></i></div><h6 class="fw-bold">समर्पित सहायता</h6><p>वर्चुअल/लाइव चैट, ईमेल व फोन सपोर्ट।</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
   <section class="py-4">
     <div class="container">
-      <div class="row g-4 align-items-center">
-        <div class="col-12 col-lg-8">
-          <div class="cta-card d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
-            <div class="d-flex align-items-center gap-3">
-              <div class="f-icon"><i class="bi bi-chat-dots"></i></div>
-              <div>
-                <h5 class="mb-1">लाइव/वर्चुअल चैट</h5>
-                <p class="text-muted mb-0">वर्चुअल असिस्टेंट या वास्तविक एजेंट से सहायता के लिए लॉगिन करें।</p>
-              </div>
-            </div>
-          <a href="/user/login?next=/assistant/account" class="btn btn-outline-brand btn-lg">
-  💬 चैट के लिए लॉगिन करें
-</a>
+      <h4 class="section-title mb-3">कैसे काम करता है</h4>
+      <div class="row g-4">
+        <div class="col-12 col-md-3"><div class="step-card h-100"><div class="d-flex align-items-center gap-2 mb-2"><span class="step-num">1</span><strong>लॉगिन</strong></div><p class="mb-0 text-muted">मोबाइल ओटीपी द्वारा सुरक्षित लॉगिन।</p></div></div>
+        <div class="col-12 col-md-3"><div class="step-card h-100"><div class="d-flex align-items-center gap-2 mb-2"><span class="step-num">2</span><strong>डेटा एंट्री</strong></div><p class="mb-0 text-muted">खरीद/स्टॉक/भुगतान/लोन अपडेट करें।</p></div></div>
+        <div class="col-12 col-md-3"><div class="step-card h-100"><div class="d-flex align-items-center gap-2 mb-2"><span class="step-num">3</span><strong>विश्लेषण</strong></div><p class="mb-0 text-muted">देय, मार्जिन, P&L, ब्रेकईवन देखें।</p></div></div>
+        <div class="col-12 col-md-3"><div class="step-card h-100"><div class="d-flex align-items-center gap-2 mb-2"><span class="step-num">4</span><strong>एक्सपोर्ट</strong></div><p class="mb-0 text-muted">PDF/Excel में रिपोर्ट डाउनलोड।</p></div></div>
+      </div>
+    </div>
+  </section>
 
+  <!-- TESTIMONIALS -->
+  <section class="py-4" style="background:#fff">
+    <div class="container">
+      <h4 class="section-title mb-3">उपयोगकर्ता अनुभव</h4>
+      <div class="row g-4">
+        <div class="col-12 col-md-4"><div class="testi h-100"><div class="d-flex align-items-center gap-2 mb-2"><div class="avatar">AK</div><div><strong>अमित कुमार</strong><br><small class="text-muted">स्टॉकिस्ट</small></div></div><p class="mb-0 text-muted">“देय/भुगतान और स्टॉक का मिलान अब बहुत आसान है। PDF/Excel एक्सपोर्ट से ऑडिट तेज़।”</p></div></div>
+        <div class="col-12 col-md-4"><div class="testi h-100"><div class="d-flex align-items-center gap-2 mb-2"><div class="avatar">PM</div><div><strong>प्रमोद मिश्रा</strong><br><small class="text-muted">सेलर</small></div></div><p class="mb-0 text-muted">“वर्चुअल चैट और लाइव एजेंट—किसी भी समय सहायता उपलब्ध।”</p></div></div>
+        <div class="col-12 col-md-4"><div class="testi h-100"><div class="d-flex align-items-center gap-2 mb-2"><div class="avatar">SS</div><div><strong>स्वाति सिंह</strong><br><small class="text-muted">लेखा</small></div></div><p class="mb-0 text-muted">“ब्रेकईवन, P&L और फाइनल रिपोर्ट्स—एक क्लिक में।”</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PARTNERS -->
+  <section class="py-4">
+    <div class="container">
+      <h4 class="section-title mb-3">हमारे पार्टनर्स</h4>
+      <div class="row g-3">
+        <div class="col-6 col-md-3"><div class="logo-tile">Partner A</div></div>
+        <div class="col-6 col-md-3"><div class="logo-tile">Partner B</div></div>
+        <div class="col-6 col-md-3"><div class="logo-tile">Partner C</div></div>
+        <div class="col-6 col-md-3"><div class="logo-tile">Partner D</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="py-4" style="background:#fff">
+    <div class="container">
+      <h4 class="section-title mb-3">अक्सर पूछे जाने वाले प्रश्न</h4>
+      <div class="accordion" id="faq">
+        <div class="accordion-item mb-2">
+          <h2 class="accordion-header" id="q1">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#a1" aria-expanded="true" aria-controls="a1">
+              आपके कार्य के घंटे क्या हैं?
+            </button>
+          </h2>
+          <div id="a1" class="accordion-collapse collapse show" data-bs-parent="#faq">
+            <div class="accordion-body">सोम–शनि, 10:00–18:00 (सामान्य दिन)।</div>
           </div>
         </div>
-        <div class="col-12 col-lg-4">
-          <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-start">
-            <span class="badge rounded-pill bg-light text-dark border"><i class="bi bi-lock-fill me-1"></i> SSL Secured</span>
-            <span class="badge rounded-pill bg-light text-dark border"><i class="bi bi-chat-dots-fill me-1"></i> Fast2SMS</span>
-            <span class="badge rounded-pill bg-light text-dark border"><i class="bi bi-phone me-1"></i> Mobile-first</span>
+        <div class="accordion-item mb-2">
+          <h2 class="accordion-header" id="q2">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a2" aria-controls="a2">
+              OTP लॉगिन कैसे काम करता है?
+            </button>
+          </h2>
+            <div id="a2" class="accordion-collapse collapse" data-bs-parent="#faq">
+              <div class="accordion-body">आपके मोबाइल पर वन-टाइम पासकोड भेजा जाएगा; उसे दर्ज कर लॉगिन करें।</div>
+            </div>
+        </div>
+        <div class="accordion-item mb-2">
+          <h2 class="accordion-header" id="q3">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a3" aria-controls="a3">
+              रिपोर्ट्स कहाँ मिलेंगी?
+            </button>
+          </h2>
+            <div id="a3" class="accordion-collapse collapse" data-bs-parent="#faq">
+              <div class="accordion-body">डैशबोर्ड में संबंधित मॉड्यूल पर जाएँ; PDF/Excel एक्सपोर्ट उपलब्ध है।</div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT STRIP -->
+  <section class="py-5">
+    <div class="container">
+      <div class="p-3 p-md-4 rounded-3 border" style="background:#f8fafc;border-color:#e5e7eb;">
+        <div class="row align-items-center g-3">
+          <div class="col-12 col-lg">
+            <strong>सहायता चाहिए?</strong> हमें लिखें या कॉल करें—हम मदद के लिए यहाँ हैं।
           </div>
-          <div class="text-center text-lg-start mt-3">
-            <a href="/faq" class="btn btn-outline-brand me-2"><i class="bi bi-question-circle me-1"></i> FAQ</a>
-            <a href="/contact" class="btn btn-outline-brand"><i class="bi bi-envelope me-1"></i> Contact</a>
+          <div class="col-auto">
+            <a class="btn btn-outline-brand" href="mailto:skchy@anunayagro.co.in"><i class="bi bi-envelope me-1"></i> ईमेल</a>
+          </div>
+          <div class="col-auto">
+            <a class="btn btn-outline-brand" href="tel:+919771899097"><i class="bi bi-telephone me-1"></i> 9771899097</a>
+          </div>
+          <div class="col-auto">
+            <a class="btn btn-outline-brand" href="tel:+916299176257"><i class="bi bi-telephone me-1"></i> 6299176257</a>
           </div>
         </div>
       </div>
@@ -302,50 +531,68 @@
 
   <!-- FOOTER -->
   <footer>
-    <div class="container text-center">
-      <div class="mb-1">
-        <a href="/faq">FAQ</a> · <a href="/contact">Contact</a> · <a href="/how-to">How to Use Portal</a>
+    <div class="container">
+      <div class="row gy-3">
+        <div class="col-12 col-md-4">
+          <h6 class="fw-bold">Anunay Agro</h6>
+          <p class="mb-2 text-muted">Reducing Post Harvest Wastage</p>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="chip"><i class="bi bi-lock-fill me-1"></i> SSL</span>
+            <span class="chip"><i class="bi bi-chat-dots-fill me-1"></i> Fast2SMS</span>
+            <span class="chip"><i class="bi bi-phone me-1"></i> Mobile-first</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <h6 class="fw-bold">लिंक</h6>
+          <ul class="list-unstyled mb-0">
+            <li><a href="/faq">FAQ</a></li>
+            <li><a href="/how-to">How to Use</a></li>
+            <li><a href="/contact">Contact</a></li>
+            <li><a href="/user/login">User Login</a></li>
+          </ul>
+        </div>
+        <div class="col-6 col-md-4">
+          <h6 class="fw-bold">संपर्क</h6>
+          <div>📧 <a href="mailto:skchy@anunayagro.co.in">skchy@anunayagro.co.in</a></div>
+          <div>📞 <a href="tel:+919771899097">9771899097</a>, <a href="tel:+916299176257">6299176257</a></div>
+          <div>🔧 पोर्टल सहायता: <a href="tel:+919771259451">9771259451</a></div>
+        </div>
       </div>
-      © 2025 Anunay Agro |
-      📧 <a href="mailto:skchy@anunayagro.co.in">skchy@anunayagro.co.in</a> |
-      📞 <a href="tel:+919771899097">9771899097</a>, <a href="tel:+916299176257">6299176257</a> |
-      🔧 पोर्टल सहायता: <a href="tel:+919771259451">9771259451</a>
+      <hr class="my-3">
+      <div class="text-center small">© 2025 Anunay Agro — All rights reserved.</div>
     </div>
   </footer>
+
+  <!-- Floating Chat/Login CTA -->
+  <div class="floating-cta">
+    <div class="chat-label d-none d-sm-block">चैट के लिए लॉगिन</div>
+    <a class="chat-fab" href="/user/login?next=/assistant/account" aria-label="Login to chat">
+      <span class="pulse"></span>
+      <i class="bi bi-chat-dots-fill"></i>
+    </a>
+  </div>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
 
-  <!-- Language + micro-interactions -->
+  <!-- Language + interactions -->
   <script>
     const dict = {
       en:{
         title:"Welcome to Anunay Agro Warehouse Portal",
-        tagline:"Your secure gateway to manage warehouse operations, view reports, and track loans in real-time.",
+        tagline:"Manage warehouse operations, reports, and loans securely in real-time.",
         statStock:"Total Stock",
         statSellers:"Total Sellers",
-        statLoans:"Total Stockists",
+        statStockists:"Total Stockists",
         loginCta:"Login to Continue",
-        featureDashboard:"Seller & Stockist Dashboard",
-        featureDashboardDesc:"Manage purchases, stock entries, loans, and due reports with ease.",
-        featureReports:"Reports & Exports",
-        featureReportsDesc:"Download summaries in Excel/PDF with powerful filters.",
-        featureOtp:"OTP-Based Secure Login",
-        featureOtpDesc:"Powered by Fast2SMS over SSL. No passwords required."
       },
       hi:{
         title:"अनुनय एग्रो वेयरहाउस पोर्टल में आपका स्वागत है",
         tagline:"वेयरहाउस संचालन, रिपोर्ट व ऋण ट्रैकिंग — सब कुछ सुरक्षित और रियल-टाइम में।",
         statStock:"कुल स्टॉक",
         statSellers:"कुल विक्रेता",
-        statLoans:"कुल स्टॉकिस्ट",
+        statStockists:"कुल स्टॉकिस्ट",
         loginCta:"लॉगिन करें",
-        featureDashboard:"सेलर व स्टॉकिस्ट डैशबोर्ड",
-        featureDashboardDesc:"खरीद, स्टॉक एंट्री, ऋण व देय रिपोर्ट आसानी से प्रबंधित करें।",
-        featureReports:"रिपोर्ट्स व एक्सपोर्ट्स",
-        featureReportsDesc:"शक्तिशाली फ़िल्टर के साथ Excel/PDF में सारांश डाउनलोड करें।",
-        featureOtp:"ओटीपी आधारित सुरक्षित लॉगिन",
-        featureOtpDesc:"Fast2SMS व SSL द्वारा सुरक्षित। पासवर्ड की आवश्यकता नहीं।"
       }
     };
 
@@ -355,7 +602,7 @@
         const k = el.getAttribute("data-i18n");
         if(map[k] !== undefined) el.textContent = map[k];
       });
-      document.querySelectorAll(".lang-toggle .btn").forEach(b=>{
+      document.querySelectorAll(".btn-group [data-lang]").forEach(b=>{
         const active = b.getAttribute("data-lang") === lang;
         b.classList.toggle("active", active);
         b.setAttribute("aria-pressed", active ? "true" : "false");
@@ -379,15 +626,10 @@
     }
 
     document.addEventListener("DOMContentLoaded", ()=>{
-      // Hindi default
       applyLang("hi");
-
-      // Lang switcher
-      document.querySelectorAll(".lang-toggle .btn").forEach(btn=>{
+      document.querySelectorAll(".btn-group [data-lang]").forEach(btn=>{
         btn.addEventListener("click", ()=> applyLang(btn.dataset.lang));
       });
-
-      // Login button loading state
       const loginBtn = document.getElementById("loginBtn");
       if (loginBtn){
         loginBtn.addEventListener("click", ()=>{
@@ -396,8 +638,6 @@
             '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> लोड हो रहा है...';
         });
       }
-
-      // Animate stats
       animateCounts();
     });
   </script>
