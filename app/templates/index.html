@@ -178,6 +178,21 @@
       background: linear-gradient(120deg, var(--brand), var(--blue));
     }
 
+    .fab-chat{
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 9999;              /* keep above everything */
+  }
+  .fab-chat .btn{
+    border-radius: 9999px;      /* pill shape */
+    box-shadow: 0 12px 28px rgba(16,24,40,.22);
+    font-weight: 700;
+  }
+  @media (max-width: 480px){
+    .fab-chat{ right:12px; bottom:12px; }
+  }
+
     /* Bigger, roomier tiles */
   .logo-tile{
     height: 120px;                /* was ~54–80px */
@@ -211,6 +226,14 @@
   }
 </style>
 </head>
+  <div class="fab-chat">
+  <a class="btn btn-success btn-lg d-flex align-items-center gap-2"
+     href="/user/login?next=/assistant/account" aria-label="Login to chat">
+    <i class="bi bi-chat-dots-fill"></i>
+    <span>चैट</span>
+  </a>
+</div>
+
 <body class="bg-blobs">
 
   <!-- NAVBAR -->
