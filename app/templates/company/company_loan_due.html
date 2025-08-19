@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <title>कंपनी ऋण देय (Company Loan Due)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    body { background-color: #f5f8fa; }
+    .card { border-radius: 14px; }
+  </style>
+</head>
+<body>
+<div class="container py-4">
+  <div class="mb-3">
+  <a href="{{ url_for('company_dashboard.finance_dashboard') }}" class="btn btn-outline-secondary">
+    ← Back to Finance Dashboard
+  </a>
+</div>
+
+
+  <h2 class="mb-4 fw-bold text-primary">कंपनी ऋण देय (Company Loan Due)</h2>
+
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">कुल ऋण (Total Loans Sanctioned)</h6>
+          <div class="display-6">₹ {{ "{:,.2f}".format(total_loan) }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">कुल अदायगी (Total Repayments)</h6>
+          <div class="display-6">₹ {{ "{:,.2f}".format(total_repaid) }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">देय राशि (Outstanding / Due)</h6>
+          <div class="display-6 fw-bold {{ 'text-danger' if loan_due>0 else 'text-success' }}">
+            ₹ {{ "{:,.2f}".format(loan_due) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <a href="{{ url_for('company_loan_due.loan_due') }}" class="btn btn-primary">
+      ↻ रिफ्रेश (Refresh)
+    </a>
+  </div>
+</div>
+</body>
+</html>
