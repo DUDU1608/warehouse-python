@@ -226,8 +226,10 @@ def final_report():
             in_q = in_q.filter(StockData.warehouse == warehouse)
         total_qty = _sum_scalar(in_q)  # KG
 
-        # 2) Reduction = 1.5% of total quantity
-        reduction = round(total_qty * 0.015, 3)
+        # 2) Reduction = 1.5% of total quantity (only for Maize)
+        reduction = 0.0
+        if commodity.lower() == "maize":
+            reduction = round(total_qty * 0.015, 3)
 
         # 3) Net Quantity = (1) - (2)
         net_qty = max(0.0, total_qty - reduction)  # KG
