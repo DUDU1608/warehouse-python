@@ -151,7 +151,7 @@ def create_app() -> Flask:
         from app.routes.company import (
             dashboard as company_dashboard,
             companyloan, loanrepayment, interest_payble, interest_receivable,
-            rental_due, expenditure, breakeven_calculator, profit_loss, final_report,
+            rental_due, expenditure, breakeven_calculator, profit_loss, final_report,company_loan_due
         )
         app.register_blueprint(company_dashboard.bp)
         app.register_blueprint(companyloan.bp)
@@ -163,6 +163,7 @@ def create_app() -> Flask:
         app.register_blueprint(breakeven_calculator.bp)
         app.register_blueprint(profit_loss.bp)
         app.register_blueprint(final_report.bp)
+        app.register_blueprint(company_loan_due.bp)
     except Exception as e:
         app.logger.debug("Company blueprints not fully registered: %s", e)
 
