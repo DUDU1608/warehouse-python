@@ -4,14 +4,25 @@
   <meta charset="utf-8">
   <title>Payment Receipts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f7f8fb; }
+    /* edit/view toggles */
+    .cell-edit { display: none; }
+    tr.editing .cell-view { display: none; }
+    tr.editing .cell-edit { display: block; }
+    .btn-edit { display: inline-block; }
+    .btn-save, .btn-cancel { display: none; }
+    tr.editing .btn-edit { display: none; }
+    tr.editing .btn-save, tr.editing .btn-cancel { display: inline-block; }
+  </style>
 </head>
 <body class="bg-light">
 <nav class="navbar navbar-expand-lg bg-white border-bottom">
   <div class="container">
     <a class="navbar-brand fw-bold" href="#">Buyer Module</a>
     <div class="ms-auto d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="/buyer/dashboard">← Buyer Dashboard</a>
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('payments.add_payment') }}">Add Receipt</a>
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('buyer.add_buyer') }}">Add Buyer</a>
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('sales.add_sale') }}">Add Sale</a>
@@ -33,9 +44,13 @@
 
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h3 class="fw-bold">🧾 Payment Receipts</h3>
-    <a class="btn btn-success" href="{{ url_for('payments.add_payment') }}">➕ Add Receipt</a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-success" href="{{ url_for('payments.add_payment') }}">➕ Add Receipt</a>
+      <a class="btn btn-outline-secondary" href="/buyer/dashboard">← Buyer Dashboard</a>
+    </div>
   </div>
 
+  <!-- Filters -->
   <form method="GET" class="row g-2 mb-3">
     <div class="col-md-4">
       <label class="form-label">Buyer</label>
@@ -76,24 +91,56 @@
       </thead>
       <tbody>
         {% for p in payments %}
-        <tr>
-          <form method="POST" action="{{ url_for('payments.update_payment', payment_id=p.id) }}">
+        <tr data-row>
+          <form method="POST" action="{{ url_for('payments.update_payment', payment_id=p.id) }}" class="row-form">
+            <!-- Buyer (read-only) -->
             <td>{{ p.buyer_name }}</td>
             <td class="small text-muted">{{ p.mobile_no }}</td>
+
+            <!-- Commodity -->
             <td>
-              <select name="commodity" class="form-select form-select-sm">
-                <option value="" {% if not p.commodity %}selected{% endif %}>—</option>
-                {% for c in ['Wheat','Maize','Paddy'] %}
-                  <option value="{{ c }}" {% if p.commodity==c %}selected{% endif %}>{{ c }}</option>
-                {% endfor %}
-              </select>
+              <div class="cell-view">{{ p.commodity or '—' }}</div>
+              <div class="cell-edit">
+                <select name="commodity" class="form-select form-select-sm">
+                  <option value="" {% if not p.commodity %}selected{% endif %}>—</option>
+                  {% for c in ['Wheat','Maize','Paddy'] %}
+                    <option value="{{ c }}" {% if p.commodity==c %}selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
             </td>
-            <td><input class="form-control form-control-sm" name="warehouse" value="{{ p.warehouse or '' }}"></td>
-            <td><input type="number" step="0.01" class="form-control form-control-sm" name="amount" value="{{ '%.2f'|format(p.amount) }}"></td>
-            <td><input class="form-control form-control-sm" name="reference" value="{{ p.reference or '' }}"></td>
-            <td class="text-end">
-              <button class="btn btn-sm btn-primary">Save</button>
+
+            <!-- Warehouse -->
+            <td>
+              <div class="cell-view">{{ p.warehouse or '' }}</div>
+              <div class="cell-edit">
+                <input class="form-control form-control-sm" name="warehouse" value="{{ p.warehouse or '' }}">
+              </div>
+            </td>
+
+            <!-- Amount -->
+            <td class="fw-semibold">
+              <span class="cell-view">{{ p.amount|format_inr }}</span>
+              <span class="cell-edit">
+                <input type="number" step="0.01" class="form-control form-control-sm" name="amount" value="{{ '%.2f'|format(p.amount) }}">
+              </span>
+            </td>
+
+            <!-- Reference -->
+            <td>
+              <div class="cell-view">{{ p.reference or '' }}</div>
+              <div class="cell-edit">
+                <input class="form-control form-control-sm" name="reference" value="{{ p.reference or '' }}">
+              </div>
+            </td>
+
+            <!-- Actions -->
+            <td class="text-end text-nowrap">
+              <button type="button" class="btn btn-sm btn-secondary btn-edit">Edit</button>
+              <button class="btn btn-sm btn-primary btn-save">Save</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary btn-cancel">Cancel</button>
           </form>
+
               <form method="POST" action="{{ url_for('payments.delete_payment', payment_id=p.id) }}" class="d-inline"
                     onsubmit="return confirm('Delete this payment receipt?');">
                 <button class="btn btn-sm btn-outline-danger">Delete</button>
@@ -108,6 +155,37 @@
   </div>
 </div>
 
+<script>
+(function(){
+  function enterEdit(tr){ tr.classList.add('editing'); }
+  function exitEdit(tr){
+    tr.classList.remove('editing');
+    // Reset form values when cancelling
+    const form = tr.querySelector('form.row-form');
+    if (form && tr.dataset.cancelReset === "1"){
+      form.reset();
+      tr.dataset.cancelReset = "0";
+    }
+  }
+
+  document.querySelectorAll('tr[data-row]').forEach(function(tr){
+    const editBtn = tr.querySelector('.btn-edit');
+    const cancelBtn = tr.querySelector('.btn-cancel');
+    const saveBtn = tr.querySelector('.btn-save');
+
+    if (editBtn){ editBtn.addEventListener('click', () => enterEdit(tr)); }
+    if (cancelBtn){
+      cancelBtn.addEventListener('click', () => {
+        tr.dataset.cancelReset = "1";
+        exitEdit(tr);
+      });
+    }
+    if (saveBtn){
+      // Button is inside form; default submit is fine
+    }
+  });
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
