@@ -173,6 +173,17 @@ class BuyerPayment(db.Model):
     reference = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ResidualEarning(db.Model):
+    __tablename__ = "residual_earning"
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    warehouse = db.Column(db.String(150), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+    rate = db.Column(db.Float, nullable=False)
+    total_earning = db.Column(db.Float, nullable=False)  # usually = quantity * rate
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class CompanyLoan(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
