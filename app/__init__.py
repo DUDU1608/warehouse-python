@@ -121,7 +121,13 @@ def create_app() -> Flask:
 
     # Seller module
     try:
-        from app.routes.seller import dashboard as seller_dashboard, seller, purchase, payment, due
+        from app.routes.seller import (
+            dashboard as seller_dashboard,
+            seller,
+            purchase,
+            payment,
+            due,
+        )
         app.register_blueprint(seller_dashboard.bp)
         app.register_blueprint(seller.bp)
         app.register_blueprint(purchase.bp)
@@ -134,7 +140,12 @@ def create_app() -> Flask:
     try:
         from app.routes.stockist import (
             dashboard as stockist_dashboard,
-            stockist, stockdata, stockexit, loandata, margindata, rental_calculator,
+            stockist,
+            stockdata,
+            stockexit,
+            loandata,
+            margindata,
+            rental_calculator,
         )
         app.register_blueprint(stockist_dashboard.bp)
         app.register_blueprint(stockist.bp)
@@ -146,7 +157,8 @@ def create_app() -> Flask:
     except Exception as e:
         app.logger.debug("Stockist blueprints not fully registered: %s", e)
 
-        try:
+    # Buyer module  ✅ moved out of the Stockist except; fixed indentation
+    try:
         from app.routes.buyer import (
             dashboard as buyer_dashboard,
             buyer,
@@ -158,14 +170,22 @@ def create_app() -> Flask:
         app.register_blueprint(sales.bp)
         app.register_blueprint(payments.bp)
     except Exception as e:
-        log.debug("Buyer blueprints not fully registered: %s", e)
+        app.logger.debug("Buyer blueprints not fully registered: %s", e)
 
     # Company module
     try:
         from app.routes.company import (
             dashboard as company_dashboard,
-            companyloan, loanrepayment, interest_payble, interest_receivable,
-            rental_due, expenditure, breakeven_calculator, profit_loss, final_report,company_loan_due
+            companyloan,
+            loanrepayment,
+            interest_payble,
+            interest_receivable,
+            rental_due,
+            expenditure,
+            breakeven_calculator,
+            profit_loss,
+            final_report,
+            company_loan_due,
         )
         app.register_blueprint(company_dashboard.bp)
         app.register_blueprint(companyloan.bp)
@@ -261,3 +281,4 @@ def create_app() -> Flask:
         return {"ok": True}, 200
 
     return app
+
