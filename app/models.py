@@ -130,6 +130,50 @@ class MarginData(db.Model):
     commodity = db.Column(db.String(20), nullable=False)
     amount = db.Column(db.Float, nullable=False)
 
+class Buyer(db.Model):
+    __tablename__ = "buyer"
+    id = db.Column(db.Integer, primary_key=True)
+    buyer_name = db.Column(db.String(150), nullable=False, index=True)
+    mobile_no = db.Column(db.String(20), nullable=False, unique=True, index=True)
+    address = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    sales = db.relationship("BuyerSale", backref="buyer", lazy=True, cascade="all, delete-orphan")
+    payments = db.relationship("BuyerPayment", backref="buyer", lazy=True, cascade="all, delete-orphan")
+
+
+class BuyerSale(db.Model):
+    __tablename__ = "buyer_sale"
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    rst_no = db.Column(db.String(50), nullable=False)
+    warehouse = db.Column(db.String(150))
+    buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+    buyer_name = db.Column(db.String(150))
+    mobile = db.Column(db.String(20))
+    commodity = db.Column(db.String(50), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+    rate = db.Column(db.Float, nullable=False)
+    cost = db.Column(db.Float, nullable=False)
+    handling_charge = db.Column(db.Float, default=0.0)
+    net_cost = db.Column(db.Float, nullable=False)  # cost + handling
+    quality = db.Column(db.String(20))  # Good / BD
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class BuyerPayment(db.Model):
+    __tablename__ = "buyer_payment"
+    id = db.Column(db.Integer, primary_key=True)
+    buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+    buyer_name = db.Column(db.String(150))
+    mobile_no = db.Column(db.String(20))
+    commodity = db.Column(db.String(50))
+    warehouse = db.Column(db.String(150))
+    amount = db.Column(db.Float, nullable=False)
+    reference = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class CompanyLoan(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
