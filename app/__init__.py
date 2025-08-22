@@ -146,6 +146,20 @@ def create_app() -> Flask:
     except Exception as e:
         app.logger.debug("Stockist blueprints not fully registered: %s", e)
 
+        try:
+        from app.routes.buyer import (
+            dashboard as buyer_dashboard,
+            buyer,
+            sales,
+            payments,
+        )
+        app.register_blueprint(buyer_dashboard.bp)
+        app.register_blueprint(buyer.bp)
+        app.register_blueprint(sales.bp)
+        app.register_blueprint(payments.bp)
+    except Exception as e:
+        log.debug("Buyer blueprints not fully registered: %s", e)
+
     # Company module
     try:
         from app.routes.company import (
