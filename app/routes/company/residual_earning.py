@@ -13,8 +13,10 @@ def _parse_date(s: str):
         return None
 
 def _f(v, default=0.0) -> float:
-    try: return float(v)
-    except Exception: return float(default)
+    try:
+        return float(v)
+    except Exception:
+        return float(default)
 
 @bp.route("/residual-earning/add", methods=["GET", "POST"])
 def add_earning():
@@ -55,9 +57,8 @@ def list_earnings():
     if d_to:      q = q.filter(ResidualEarning.date <= d_to)
 
     rows = q.order_by(ResidualEarning.date.desc(), ResidualEarning.id.desc()).all()
-    # for simple dropdowns
-    warehouses = [w[0] for w in db.session.query(ResidualEarning.warehouse).distinct().all()]
-    commodities = [c[0] for w in db.session.query(ResidualEarning.commodity).distinct().all()]
+    warehouses  = [w[0] for w in db.session.query(ResidualEarning.warehouse).distinct().all()]
+    commodities = [c[0] for c in db.session.query(ResidualEarning.commodity).distinct().all()]
     return render_template("company/list_residual_earnings.html",
                            rows=rows, warehouses=warehouses, commodities=commodities)
 
@@ -69,7 +70,6 @@ def update_earning(rid: int):
     r.commodity = (request.form.get("commodity") or r.commodity).strip()
     r.quantity = _f(request.form.get("quantity"), r.quantity)
     r.rate = _f(request.form.get("rate"), r.rate)
-    # prefer server-side authoritative recompute if total omitted
     inp_total = request.form.get("total_earning", "").strip()
     r.total_earning = _f(inp_total, r.quantity * r.rate)
 
