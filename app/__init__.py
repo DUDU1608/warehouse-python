@@ -146,6 +146,7 @@ def create_app() -> Flask:
             loandata,
             margindata,
             rental_calculator,
+            stockist_payment
         )
         app.register_blueprint(stockist_dashboard.bp)
         app.register_blueprint(stockist.bp)
@@ -154,6 +155,7 @@ def create_app() -> Flask:
         app.register_blueprint(loandata.bp)
         app.register_blueprint(margindata.bp)
         app.register_blueprint(rental_calculator.bp)
+        app.register_blueprint(stockist_payment.bp)
     except Exception as e:
         app.logger.debug("Stockist blueprints not fully registered: %s", e)
 
