@@ -245,10 +245,25 @@ def pdf(invoice_id: int):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.lib import colors
-    from reportlab.platypus import (
-        SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    )
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    # ---------- fonts (₹ support) ----------
+    # Try DejaVu (has Rupee). Fallback to Helvetica if not installed.
+    # On Debian/Ubuntu the path is usually /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+    RUPEE = "₹"
+    font_name = "Helvetica"
+    bold_font_name = "Helvetica-Bold"
+    try:
+        pdfmetrics.registerFont(TTFont("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
+        pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
+        font_name = "DejaVuSans"
+        bold_font_name = "DejaVuSans-Bold"
+    except Exception:
+        # If DejaVu not present, keep Helvetica (₹ may render as empty box); you can `apt-get install fonts-dejavu-core`
+        pass
 
     inv: Invoice | None = Invoice.query.get(invoice_id)
     if not inv:
@@ -257,59 +272,50 @@ def pdf(invoice_id: int):
 
     items = InvoiceItem.query.filter_by(invoice_id=inv.id).all()
 
-    # --- PDF doc (extra top margin for taller header band) ---
+    # ---------- doc ----------
     buf = BytesIO()
     doc = SimpleDocTemplate(
         buf,
         pagesize=A4,
         leftMargin=18 * mm,
         rightMargin=18 * mm,
-        topMargin=70 * mm,       # more room for header content
+        topMargin=72 * mm,      # tall header band
         bottomMargin=20 * mm,
         title=f"Invoice {inv.invoice_no}",
     )
-    styles = getSampleStyleSheet()
-    P = styles["BodyText"]
-    P.fontName = "Helvetica"
-    P.fontSize = 9
-    P.leading = 12
 
-    P_bold = styles["BodyText"]
-    P_bold.fontName = "Helvetica-Bold"
-    P_bold.fontSize = 9
-    P_bold.leading = 12
+    styles = getSampleStyleSheet()
+    body = ParagraphStyle(
+        "body",
+        parent=styles["BodyText"],
+        fontName=font_name, fontSize=9, leading=12, spaceAfter=0
+    )
+    body_b = ParagraphStyle(
+        "body_b",
+        parent=body,
+        fontName=bold_font_name
+    )
 
     story = []
 
-    # ---------- Meta block (use Paragraphs so text wraps) ----------
+    # ---------- meta (wrapped text) ----------
+    clean_addr = "" if (inv.address or "").strip().lower() == "none" else (inv.address or "")
     meta = [
-        [
-            "CUSTOMER NAME",
-            Paragraph(inv.customer_name or "", P),
-            "INVOICE",
-            Paragraph(f"No: {inv.invoice_no}", P_bold),
-        ],
-        [
-            "INVOICE DATE",
-            Paragraph(inv.date.strftime("%d-%m-%Y"), P),
-            "Driver No",
-            Paragraph(inv.driver_no or "", P),
-        ],
-        [
-            "Vehicle No",
-            Paragraph(inv.vehicle_no or "", P),
-            "Address",
-            Paragraph(inv.address or "", P),
-        ],
+        ["CUSTOMER NAME", Paragraph(inv.customer_name or "", body),
+         "INVOICE", Paragraph(f"No: {inv.invoice_no}", body_b)],
+        ["INVOICE DATE", Paragraph(inv.date.strftime("%d-%m-%Y"), body),
+         "Driver No", Paragraph(inv.driver_no or "", body)],
+        ["Vehicle No", Paragraph(inv.vehicle_no or "", body),
+         "Address", Paragraph(clean_addr, body)],
     ]
-    meta_tbl = Table(meta, colWidths=[30*mm, 75*mm, 25*mm, None])
+    # widen the customer-name column so it wraps nicely
+    meta_tbl = Table(meta, colWidths=[35*mm, 95*mm, 25*mm, 45*mm])
     meta_tbl.setStyle(TableStyle([
         ("BOX", (0,0), (-1,-1), 0.8, colors.black),
         ("INNERGRID", (0,0), (-1,-1), 0.3, colors.black),
         ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
         ("BACKGROUND", (2,0), (2,-1), colors.whitesmoke),
         ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ("WORDWRAP", (0,0), (-1,-1), "CJK"),
         ("LEFTPADDING", (0,0), (-1,-1), 6),
         ("RIGHTPADDING", (0,0), (-1,-1), 6),
         ("TOPPADDING", (0,0), (-1,-1), 5),
@@ -318,36 +324,33 @@ def pdf(invoice_id: int):
     story.append(meta_tbl)
     story.append(Spacer(1, 6 * mm))
 
-    # ---------- Items table (Paragraph for description to wrap) ----------
+    # ---------- items (wrap description + use ₹ in headings) ----------
     data = [[
-        "SL NO", "DESCRIPTIONS OF GOODS", "PRICE (₹/Qt)", "QTY (Quintal)", "AMOUNT (₹)"
+        "SL NO", "DESCRIPTIONS OF GOODS",
+        f"PRICE ({RUPEE}/Qt)", "QTY (Quintal)", f"AMOUNT ({RUPEE})"
     ]]
     for idx, it in enumerate(items, start=1):
         data.append([
             str(idx),
-            Paragraph(it.description or "", P),
+            Paragraph(it.description or "", body),
             f"{it.price:.2f}",
             f"{it.qty:g}",
             f"{it.amount:.2f}",
         ])
 
-    item_tbl = Table(
-        data,
-        colWidths=[12*mm, None, 32*mm, 30*mm, 32*mm],
-        repeatRows=1
-    )
+    item_tbl = Table(data, colWidths=[12*mm, None, 32*mm, 30*mm, 32*mm], repeatRows=1)
     style_cmds = [
         ("GRID", (0,0), (-1,-1), 0.4, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTNAME", (0,0), (-1,0), bold_font_name),
         ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ("WORDWRAP", (0,1), (1,-1), "CJK"),  # wrap descriptions
         ("LEFTPADDING", (0,0), (-1,-1), 5),
         ("RIGHTPADDING", (0,0), (-1,-1), 5),
         ("TOPPADDING", (0,0), (-1,-1), 4),
         ("BOTTOMPADDING", (0,0), (-1,-1), 4),
         ("ALIGN", (2,1), (4,-1), "RIGHT"),
     ]
+    # zebra rows
     for r in range(1, len(data)):
         if r % 2 == 0:
             style_cmds.append(("BACKGROUND", (0, r), (-1, r), colors.whitesmoke))
@@ -355,18 +358,18 @@ def pdf(invoice_id: int):
     story.append(item_tbl)
     story.append(Spacer(1, 6 * mm))
 
-    # ---------- Totals ----------
+    # ---------- totals ----------
     totals = [
         ["G. TOTAL", f"{inv.grand_total:.2f}"],
         ["C. GST - %", f"{inv.cgst:.2f}"],
         ["S. GST - %", f"{inv.sgst:.2f}"],
         ["S. TOTAL", f"{inv.sub_total:.2f}"],
     ]
-    totals_tbl = Table(totals, colWidths=[40*mm, 38*mm], hAlign="RIGHT")
+    totals_tbl = Table(totals, colWidths=[40*mm, 42*mm], hAlign="RIGHT")
     totals_tbl.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.4, colors.black),
         ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
-        ("FONTNAME", (0,3), (-1,3), "Helvetica-Bold"),
+        ("FONTNAME", (0,3), (-1,3), bold_font_name),
         ("ALIGN", (1,0), (1,-1), "RIGHT"),
         ("LEFTPADDING", (0,0), (-1,-1), 6),
         ("RIGHTPADDING", (0,0), (-1,-1), 6),
@@ -376,16 +379,16 @@ def pdf(invoice_id: int):
     story.append(totals_tbl)
     story.append(Spacer(1, 5 * mm))
 
-    # ---------- Amount in words + signature ----------
+    # ---------- words + sign ----------
     try:
         words = _amount_to_words_rupees(inv.grand_total)
     except Exception:
         words = f"{inv.grand_total:.2f}"
-    story.append(Paragraph(f"<b>Amount in words:</b> {words}", P))
+    story.append(Paragraph(f"<b>Amount in words:</b> {words}", body))
     story.append(Spacer(1, 10 * mm))
-    story.append(Paragraph("For <b>Shree Anunay Agro Pvt Ltd</b><br/>Authorized Signatory", P))
+    story.append(Paragraph(f"For <b>{CO_NAME}</b><br/>Authorized Signatory", body))
 
-    # ---------- Header/Footer: ALL contact lines inside the orange band ----------
+    # ---------- header/footer (center ALL lines in header band) ----------
     def _draw_header_footer(canv, doc_):
         width, height = A4
         canv.saveState()
@@ -393,35 +396,35 @@ def pdf(invoice_id: int):
         left = 18 * mm
         right = width - 18 * mm
 
-        # Taller band so we can fit all company info inside
         band_top = height - 18 * mm
-        band_h = 42 * mm
+        band_h = 44 * mm
         canv.setFillColorRGB(0.95, 0.45, 0.0)  # orange
         canv.rect(left, band_top - band_h, right - left, band_h, stroke=0, fill=1)
 
-        # Title
+        # centered title + lines
         canv.setFillColor(colors.white)
-        canv.setFont("Helvetica-Bold", 16)
-        canv.drawCentredString(width / 2, band_top - 10 * mm, CO_NAME)
+        canv.setFont(bold_font_name, 16)
+        canv.drawCentredString(width/2, band_top - 10 * mm, CO_NAME)
 
-        # Company info (white text, inside band)
-        canv.setFont("Helvetica", 9)
+        canv.setFont(font_name, 9)
         y = band_top - 17 * mm
-        canv.drawString(left + 2 * mm, y, CO_ADDR); y -= 4.2 * mm
-        canv.drawString(left + 2 * mm, y, f"Mobile: {CO_MOBILE}"); y -= 4.2 * mm
-        canv.drawString(left + 2 * mm, y, f"Email: {CO_EMAIL}"); y -= 4.2 * mm
-        canv.drawString(left + 2 * mm, y, f"Website: {CO_WEBSITE}"); y -= 4.2 * mm
-        canv.drawString(left + 2 * mm, y, f"GSTIN: {CO_GSTIN}")
+        for line in (
+            CO_ADDR,
+            f"Mobile: {CO_MOBILE}",
+            f"Email: {CO_EMAIL}",
+            f"Website: {CO_WEBSITE}",
+            f"GSTIN: {CO_GSTIN}",
+        ):
+            canv.drawCentredString(width/2, y, line)
+            y -= 4.4 * mm
 
-        # Footer page number
         canv.setFillColor(colors.black)
-        canv.setFont("Helvetica", 8)
+        canv.setFont(font_name, 8)
         canv.drawRightString(right, 12 * mm, f"Page {doc_.page}")
 
         canv.restoreState()
 
     doc.build(story, onFirstPage=_draw_header_footer, onLaterPages=_draw_header_footer)
-
     buf.seek(0)
     return send_file(buf, mimetype="application/pdf", as_attachment=True,
                      download_name=f"invoice_{inv.invoice_no}.pdf")
