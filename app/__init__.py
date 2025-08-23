@@ -147,27 +147,42 @@ def create_app() -> Flask:
         app.logger.debug("Seller blueprints not fully registered: %s", e)
 
     # Stockist module
+   # Stockist module
+try:
+    from app.routes.stockist import (
+        dashboard as stockist_dashboard,
+        stockist,
+        stockdata,
+        stockexit,
+        loandata,
+        margindata,
+        rental_calculator,
+    )
+
+    app.register_blueprint(stockist_dashboard.bp)
+    app.register_blueprint(stockist.bp)
+    app.register_blueprint(stockdata.bp)
+    app.register_blueprint(stockexit.bp)
+    app.register_blueprint(loandata.bp)
+    app.register_blueprint(margindata.bp)
+    app.register_blueprint(rental_calculator.bp)
+
+    # Optional: stockist payments (module name may be stockist_payment.py)
     try:
-        from app.routes.stockist import (
-            dashboard as stockist_dashboard,
-            stockist,
-            stockdata,
-            stockexit,
-            loandata,
-            margindata,
-            rental_calculator,
-            stockist_payment
-        )
-        app.register_blueprint(stockist_dashboard.bp)
-        app.register_blueprint(stockist.bp)
-        app.register_blueprint(stockdata.bp)
-        app.register_blueprint(stockexit.bp)
-        app.register_blueprint(loandata.bp)
-        app.register_blueprint(margindata.bp)
-        app.register_blueprint(rental_calculator.bp)
+        from app.routes.stockist import stockist_payment
         app.register_blueprint(stockist_payment.bp)
     except Exception as e:
-        app.logger.debug("Stockist blueprints not fully registered: %s", e)
+        app.logger.debug("Stockist payment blueprint not registered: %s", e)
+
+    # NEW: stockist loan repayments
+    try:
+        from app.routes.stockist import loan_repayment as stockist_loan_repayment
+        app.register_blueprint(stockist_loan_repayment.bp)
+    except Exception as e:
+        app.logger.debug("Stockist loan repayment blueprint not registered: %s", e)
+
+except Exception as e:
+    app.logger.debug("Stockist blueprints not fully registered: %s", e)
 
     # Buyer module  ✅ moved out of the Stockist except; fixed indentation
     try:
