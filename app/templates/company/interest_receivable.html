@@ -2,16 +2,16 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Interest Receivable Calculator</title>
+  <title>Interest Receivable (Daily Outstanding)</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 <div class="container mt-5">
-  <h3 class="mb-4 text-center">Interest Receivable Calculator</h3>
+  <h3 class="mb-4 text-center">Interest Receivable (Daily Outstanding)</h3>
 
   <form method="POST" class="mb-4 row g-3 justify-content-center">
     <div class="col-auto">
-      <label for="date" class="form-label mb-0">Calculate Interest Up To Date:</label>
+      <label for="date" class="form-label mb-0">Calculate up to date:</label>
     </div>
     <div class="col-auto">
       <input type="date" id="date" name="date" class="form-control" value="{{ end_date or '' }}" required>
@@ -28,48 +28,16 @@
     <div class="alert alert-danger">{{ error }}</div>
   {% endif %}
 
-  {% if end_date %}
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title mb-3">
-          Summary as on {{ end_date.strftime('%d/%m/%Y') }}
-          <small class="text-muted">(ROI: {{ roi }}% p.a.)</small>
-        </h5>
-
-        <div class="row">
-          <div class="col-md-6">
-            <ul class="list-unstyled mb-0">
-              <li><strong>Total Loan Interest ( @{{ roi }}% ):</strong>
-                <span class="ms-1">₹{{ total_loan_interest|round(2) }}</span>
-              </li>
-              <li><strong>Total Margin Interest (deduct) ( @{{ roi }}% ):</strong>
-                <span class="ms-1">₹{{ total_margin_interest|round(2) }}</span>
-              </li>
-              <li><strong>Total Repayment Interest (deduct) ( @{{ roi }}% ):</strong>
-                <span class="ms-1">₹{{ total_repayment_interest|round(2) if total_repayment_interest is defined else '0.00' }}</span>
-              </li>
-            </ul>
-          </div>
-          <div class="col-md-6">
-            <ul class="list-unstyled mb-0">
-              <li><strong>Simple Interest Receivable (Loan − Margin − Repayment):</strong>
-                <span class="ms-1 fw-semibold">₹{{ simple_interest_receivable|round(2) if simple_interest_receivable is defined else (total_loan_interest - total_margin_interest)|round(2) }}</span>
-              </li>
-              <li class="mt-2"><strong>Interest Receivable (Authoritative, repayment-aware piecewise):</strong>
-                <span class="ms-1 fw-bold text-success">₹{{ final_interest_receivable|round(2) }}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <hr class="my-3">
-        <p class="text-muted small mb-0">
-          Notes: “Simple” is a direct sum of per-item interests (loans minus margins and repayments). The
-          “Authoritative” figure uses a daily, repayment-aware timeline per stockist and is the recommended value.
-        </p>
-      </div>
+  {% if end_date and interest_receivable is not none %}
+    <div class="alert alert-info">
+      <strong>As on {{ end_date.strftime('%d/%m/%Y') }}:</strong><br>
+      ROI: <b>{{ roi }}%</b> p.a. (simple)<br>
+      <hr>
+      <b>Interest Receivable (Daily on Net Outstanding):</b>
+      <span class="text-success">₹{{ interest_receivable | round(2) }}</span>
     </div>
   {% endif %}
 </div>
 </body>
 </html>
+
