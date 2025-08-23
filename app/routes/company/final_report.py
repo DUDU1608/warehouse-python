@@ -118,6 +118,38 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
     return round(interest_total, 2)
 
 
+from datetime import timedelta
+from sqlalchemy import func
+
+def _accrue_piecewise(changes_by_date: dict, as_of: date, per_unit_per_day: float) -> float:
+    """
+    changes_by_date: {date -> delta_level}, where level is in MT.
+    Accrues per day from each change date up to next change (exclusive), and up to as_of (inclusive).
+    """
+    if not changes_by_date:
+        return 0.0
+    # keep only dates <= as_of
+    changes = {d: float(v) for d, v in changes_by_date.items() if d and d <= as_of}
+    if not changes:
+        return 0.0
+
+    keys = sorted(changes.keys())
+    end_boundary = as_of + timedelta(days=1)
+    keys.append(end_boundary)
+
+    running = 0.0
+    total = 0.0
+    for i in range(len(keys) - 1):
+        d = keys[i]
+        running = max(0.0, running + changes.get(d, 0.0))  # never accrue negative
+        nxt = keys[i + 1]
+        if nxt <= d:
+            continue
+        days = (nxt - d).days
+        if running > 0 and days > 0:
+            total += running * per_unit_per_day * days
+    return total
+
 def _rental_for_combination(
     stockist: str,
     upto_date: date,
@@ -128,7 +160,7 @@ def _rental_for_combination(
     """
     Rental up to 'upto_date'.
     - EXCEPTION_STOCKIST: flat ₹800/ton on net stock (ins - outs) as of 'upto_date'
-    - Others: ₹3.334/ton/day using per-entry days, subtracting exits per RST
+    - Others: ₹3.334/ton/day using a daily timeline (+IN on in-dates, -OUT on out-dates).
     Applies optional quality filter to both IN and OUT.
     """
     stockist_u = (stockist or "").strip().upper()
@@ -152,34 +184,31 @@ def _rental_for_combination(
         in_q = in_q.filter(func.upper(StockData.quality) == quality_u)
         out_q = out_q.filter(func.upper(StockExit.quality) == quality_u)
 
+    # Flat rule for the exception stockist
     if stockist_u == EXCEPTION_STOCKIST.upper():
-        total_in = _sum_scalar(in_q.with_entities(func.coalesce(func.sum(StockData.quantity), 0.0)))
-        total_out = _sum_scalar(out_q.with_entities(func.coalesce(func.sum(StockExit.quantity), 0.0)))
-        net_kg = max(0.0, total_in - total_out)
-        net_ton = net_kg / KG_PER_TON
-        return net_ton * FLAT_YEARLY_PER_TON
+        total_in = (in_q.with_entities(func.coalesce(func.sum(StockData.quantity), 0.0)).scalar() or 0.0)
+        # prefer net_qty for exits if present, else quantity
+        total_out = (out_q.with_entities(func.coalesce(func.sum(StockExit.net_qty), 0.0)).scalar() or 0.0)
+        if total_out <= 0:
+            total_out = (out_q.with_entities(func.coalesce(func.sum(StockExit.quantity), 0.0)).scalar() or 0.0)
+        net_kg = max(0.0, float(total_in) - float(total_out))
+        return (net_kg / KG_PER_TON) * FLAT_YEARLY_PER_TON
 
-    exits = out_q.all()
-    exit_by_rst = {}
-    for ex in exits:
-        rst = ex.rst_no or ""
-        exit_by_rst[rst] = exit_by_rst.get(rst, 0.0) + float(ex.quantity or 0.0)
+    # Build daily changes in MT (no rst_no needed)
+    changes = {}
+    for s in in_q.all():
+        qty_mt = float(s.quantity or 0.0) / KG_PER_TON
+        if qty_mt:
+            changes[s.date] = changes.get(s.date, 0.0) + qty_mt
 
-    rental_total = 0.0
-    stocks = in_q.all()
-    for s in stocks:
-        days = (upto_date - s.date).days + 1
-        if days <= 0:
-            continue
-        qty_in = float(s.quantity or 0.0)
-        qty_out = float(exit_by_rst.get(s.rst_no or "", 0.0))
-        net_qty = qty_in - qty_out  # KG
-        if net_qty <= 0:
-            continue
-        rent = (net_qty / KG_PER_TON) * RATE_PER_TON_PER_DAY * days
-        rental_total += rent
+    for ex in out_q.all():
+        # prefer net_qty if available
+        qkg = float(ex.net_qty if getattr(ex, "net_qty", None) is not None else (ex.quantity or 0.0))
+        qty_mt = qkg / KG_PER_TON
+        if qty_mt:
+            changes[ex.date] = changes.get(ex.date, 0.0) - qty_mt
 
-    return rental_total
+    return _accrue_piecewise(changes, upto_date, RATE_PER_TON_PER_DAY)
 
 
 @bp.route("/final-report", methods=["GET", "POST"])
