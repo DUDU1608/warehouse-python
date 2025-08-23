@@ -1,8 +1,22 @@
-# invoice.py
-# pip install reportlab==3.6.12
+# app/routes/company/invoice.py
+from __future__ import annotations
 
-from datetime import datetime
+import os
+from io import BytesIO
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime
+
+from flask import (
+    Blueprint, current_app, render_template, request, redirect,
+    url_for, send_file, abort, flash
+)
+
+# -------- Blueprint (kept same name as used in templates) --------
+bp = Blueprint("invoice", __name__, url_prefix="/company/invoice")
+
+
+# ====================== PDF GENERATOR (ReportLab) ======================
+# pip install reportlab
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -13,64 +27,53 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
 
-# ---------- Helpers ----------
-def money(x):
-    """Format number as 2‑decimal currency string."""
-    if x is None:
-        x = 0
-    q = Decimal(x).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+def _money(x) -> str:
+    q = Decimal(str(x or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     return f"{q:,.2f}"
 
-def pct(x):
-    return f"{Decimal(x).quantize(Decimal('0.01'))}%"
 
-def line(height=6):
-    return Spacer(1, height)
+def _pct(x) -> str:
+    return f"{Decimal(str(x or 0)).quantize(Decimal('0.01'))}%"
 
-# ---------- Core Generator ----------
-def build_invoice_pdf(
-    out_path,
-    company,
-    bill_to,
-    invoice_meta,
-    items,
-    taxes=None,
-    footer_note="Thank you for your business!"
+
+def _sp(h=6):
+    return Spacer(1, h)
+
+
+def _build_invoice_pdf(
+    buffer: BytesIO,
+    company: dict,
+    bill_to: dict,
+    invoice_meta: dict,
+    items: list[dict],
+    taxes: dict | None = None,
+    footer_note: str | None = "Thank you for your business!",
 ):
-    """
-    company: dict(name, address, mobile, email, website, gstin)
-    bill_to: dict(name, address, driver_no, vehicle_no)
-    invoice_meta: dict(number, date, place=None)
-    items: list of dicts with keys: sl, description, rate, qty, uom ('Quintal', etc)
-    taxes: dict with keys:
-        - cgst_rate, sgst_rate  (if interstate, pass igst_rate instead)
-    """
-
-    # --- Document ---
     page_w, page_h = A4
-    margins = dict(left=14*mm, right=14*mm, top=16*mm, bottom=16*mm)
+    margins = dict(left=14 * mm, right=14 * mm, top=16 * mm, bottom=16 * mm)
+
     doc = SimpleDocTemplate(
-        out_path, pagesize=A4,
-        leftMargin=margins["left"], rightMargin=margins["right"],
-        topMargin=margins["top"], bottomMargin=margins["bottom"]
+        buffer,
+        pagesize=A4,
+        leftMargin=margins["left"],
+        rightMargin=margins["right"],
+        topMargin=margins["top"],
+        bottomMargin=margins["bottom"],
     )
 
-    # --- Styles ---
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="H1White", fontSize=16, leading=19,
                               alignment=TA_CENTER, textColor=colors.white))
     styles.add(ParagraphStyle(name="Small", fontSize=9, leading=11))
-    styles.add(ParagraphStyle(name="SmallBold", fontSize=9, leading=11, spaceAfter=0, spaceBefore=0, leftIndent=0))
     styles.add(ParagraphStyle(name="CellKey", fontSize=9, backColor=colors.lightgrey, leading=11))
     styles.add(ParagraphStyle(name="Right9", fontSize=9, alignment=TA_RIGHT, leading=11))
-    styles.add(ParagraphStyle(name="Left9", fontSize=9, alignment=TA_LEFT, leading=11))
     styles.add(ParagraphStyle(name="FooterWhite", fontSize=9, alignment=TA_CENTER, textColor=colors.white))
 
     brand_orange = colors.HexColor("#E67E22")
 
     story = []
 
-    # ---------- HEADER BAND ----------
+    # Header band
     title_tbl = Table([[Paragraph(f"<b>{company['name']}</b>", styles["H1White"])]],
                       colWidths=[page_w - margins["left"] - margins["right"]])
     title_tbl.setStyle(TableStyle([
@@ -80,15 +83,15 @@ def build_invoice_pdf(
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]))
-    story += [title_tbl]
+    story.append(title_tbl)
 
-    # Company info inside header section (wrapped)
+    # Company info (wrapped; prevents overlap)
     comp_rows = [
         [Paragraph(f"<b>Address:</b> {company.get('address','')}", styles["Small"])],
         [Paragraph(f"<b>Mobile:</b> {company.get('mobile','')}", styles["Small"])],
         [Paragraph(f"<b>Email:</b> {company.get('email','')}", styles["Small"])],
         [Paragraph(f"<b>Website:</b> {company.get('website','')}", styles["Small"])],
-        [Paragraph(f"<b>GSTIN:</b> {company.get('gstin','')}", styles["Small"])]
+        [Paragraph(f"<b>GSTIN:</b> {company.get('gstin','')}", styles["Small"])],
     ]
     comp_tbl = Table(comp_rows, colWidths=[page_w - margins["left"] - margins["right"]])
     comp_tbl.setStyle(TableStyle([
@@ -100,22 +103,22 @@ def build_invoice_pdf(
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
-    story += [comp_tbl, line(8)]
+    story += [comp_tbl, _sp(8)]
 
-    # ---------- BILL TO + INVOICE META ----------
+    # Customer + invoice meta
     meta_tbl = Table([
         [Paragraph("<b>Customer Name</b>", styles["CellKey"]),
-         Paragraph(bill_to.get("name",""), styles["Left9"]),
+         Paragraph(bill_to.get("name",""), styles["Small"]),
          Paragraph("<b>Invoice No</b>", styles["CellKey"]),
-         Paragraph(str(invoice_meta.get("number","")), styles["Left9"])],
+         Paragraph(str(invoice_meta.get("number","")), styles["Small"])],
         [Paragraph("<b>Invoice Date</b>", styles["CellKey"]),
-         Paragraph(invoice_meta.get("date",""), styles["Left9"]),
+         Paragraph(invoice_meta.get("date",""), styles["Small"]),
          Paragraph("<b>Driver No</b>", styles["CellKey"]),
-         Paragraph(bill_to.get("driver_no",""), styles["Left9"])],
+         Paragraph(bill_to.get("driver_no",""), styles["Small"])],
         [Paragraph("<b>Vehicle No</b>", styles["CellKey"]),
-         Paragraph(bill_to.get("vehicle_no",""), styles["Left9"]),
+         Paragraph(bill_to.get("vehicle_no",""), styles["Small"]),
          Paragraph("<b>Address</b>", styles["CellKey"]),
-         Paragraph(bill_to.get("address",""), styles["Left9"])],
+         Paragraph(bill_to.get("address",""), styles["Small"])],
     ], colWidths=[28*mm, 70*mm, 28*mm, 68*mm])
     meta_tbl.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
@@ -125,10 +128,10 @@ def build_invoice_pdf(
         ("TOPPADDING", (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
-    story += [meta_tbl, line(8)]
+    story += [meta_tbl, _sp(8)]
 
-    # ---------- ITEMS ----------
-    item_header = [
+    # Items
+    head = [
         Paragraph("<b>SL NO</b>", styles["Small"]),
         Paragraph("<b>DESCRIPTION OF GOODS</b>", styles["Small"]),
         Paragraph("<b>PRICE</b>", styles["Small"]),
@@ -136,28 +139,25 @@ def build_invoice_pdf(
         Paragraph("<b>UOM</b>", styles["Small"]),
         Paragraph("<b>AMOUNT</b>", styles["Small"]),
     ]
-
-    data_rows = [item_header]
+    data = [head]
     subtotal = Decimal("0.00")
     for it in items:
         rate = Decimal(str(it.get("rate", 0)))
         qty = Decimal(str(it.get("qty", 0)))
         amt = rate * qty
         subtotal += amt
-        data_rows.append([
-            str(it.get("sl","")),
-            Paragraph(it.get("description",""), styles["Small"]),
-            money(rate),
-            money(qty),
-            it.get("uom", ""),
-            money(amt),
+        data.append([
+            str(it.get("sl", "")),
+            Paragraph(it.get("description", ""), styles["Small"]),
+            _money(rate), _money(qty),
+            it.get("uom", ""), _money(amt)
         ])
 
     col_widths = [16*mm, 70*mm, 24*mm, 24*mm, 18*mm, 32*mm]
-    tbl = Table(data_rows, colWidths=col_widths, repeatRows=1)
-    tbl.setStyle(TableStyle([
+    items_tbl = Table(data, colWidths=col_widths, repeatRows=1)
+    items_tbl.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-        ("BACKGROUND", (0, 0), (-1, 0), brand_orange),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E67E22")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("ALIGN", (2, 1), (2, -1), "RIGHT"),
         ("ALIGN", (3, 1), (3, -1), "RIGHT"),
@@ -168,31 +168,30 @@ def build_invoice_pdf(
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
-    story += [tbl, line(8)]
+    story += [items_tbl, _sp(8)]
 
-    # ---------- TOTALS / TAX ----------
-    totals_rows = [["Subtotal", money(subtotal)]]
-
+    # Totals
+    rows = [["Subtotal", _money(subtotal)]]
     cgst = sgst = igst = Decimal("0.00")
     if taxes:
-        if "igst_rate" in taxes and taxes["igst_rate"]:
-            igst_rate = Decimal(str(taxes["igst_rate"]))
-            igst = (subtotal * igst_rate / 100).quantize(Decimal("0.01"))
-            totals_rows.append([f"IGST ({pct(igst_rate)})", money(igst)])
+        if taxes.get("igst_rate"):
+            r = Decimal(str(taxes["igst_rate"]))
+            igst = (subtotal * r / 100).quantize(Decimal("0.01"))
+            rows.append([f"IGST ({_pct(r)})", _money(igst)])
         else:
-            cgst_rate = Decimal(str(taxes.get("cgst_rate", 0)))
-            sgst_rate = Decimal(str(taxes.get("sgst_rate", 0)))
-            if cgst_rate:
-                cgst = (subtotal * cgst_rate / 100).quantize(Decimal("0.01"))
-                totals_rows.append([f"CGST ({pct(cgst_rate)})", money(cgst)])
-            if sgst_rate:
-                sgst = (subtotal * sgst_rate / 100).quantize(Decimal("0.01"))
-                totals_rows.append([f"SGST ({pct(sgst_rate)})", money(sgst)])
+            if taxes.get("cgst_rate"):
+                r = Decimal(str(taxes["cgst_rate"]))
+                cgst = (subtotal * r / 100).quantize(Decimal("0.01"))
+                rows.append([f"CGST ({_pct(r)})", _money(cgst)])
+            if taxes.get("sgst_rate"):
+                r = Decimal(str(taxes["sgst_rate"]))
+                sgst = (subtotal * r / 100).quantize(Decimal("0.01"))
+                rows.append([f"SGST ({_pct(r)})", _money(sgst)])
 
     grand_total = subtotal + cgst + sgst + igst
-    totals_rows.append(["Grand Total", money(grand_total)])
+    rows.append(["Grand Total", _money(grand_total)])
 
-    totals_tbl = Table(totals_rows, colWidths=[page_w - margins["left"] - margins["right"] - 50*mm, 50*mm])
+    totals_tbl = Table(rows, colWidths=[page_w - margins["left"] - margins["right"] - 50*mm, 50*mm])
     totals_tbl.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
         ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
@@ -202,36 +201,59 @@ def build_invoice_pdf(
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
-    story += [totals_tbl, line(10)]
+    story += [totals_tbl, _sp(10)]
 
-    # ---------- DECLARATION / SIGN ----------
-    declaration = KeepTogether([
-        Paragraph("Certified that the particulars given above are true and correct.", styles["Small"]),
-        line(6),
-        Paragraph("For <b>{}</b>".format(company["name"]), styles["Right9"]),
-        line(18),
-        Paragraph("<b>Authorised Signatory</b>", styles["Right9"]),
-    ])
-    story += [declaration, line(10)]
+    # Declaration + sign
+    story += [
+        KeepTogether([
+            Paragraph("Certified that the particulars given above are true and correct.", styles["Small"]),
+            _sp(6),
+            Paragraph(f"For <b>{company['name']}</b>", styles["Right9"]),
+            _sp(18),
+            Paragraph("<b>Authorised Signatory</b>", styles["Right9"]),
+        ])
+    ]
 
-    # ---------- FOOTER BAND ----------
+    # Footer band
     if footer_note:
-        footer_tbl = Table([[Paragraph(footer_note, styles["FooterWhite"])]],
-                           colWidths=[page_w - margins["left"] - margins["right"]])
-        footer_tbl.setStyle(TableStyle([
+        ft = Table([[Paragraph(footer_note, styles["FooterWhite"])]],
+                   colWidths=[page_w - margins["left"] - margins["right"]])
+        ft.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), brand_orange),
             ("TOPPADDING", (0, 0), (-1, -1), 6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ]))
-        story.append(footer_tbl)
+        story.append(ft)
 
-    # Build
     doc.build(story)
 
 
-# ---------- Example usage ----------
-if __name__ == "__main__":
-    company_info = {
+# ============================ ROUTES ============================
+
+@bp.get("/new")
+def new_invoice():
+    """
+    Renders your existing form template:
+    templates/company/invoice_new.html
+    Keep your current HTML; this route name is unchanged: 'invoice.new_invoice'
+    """
+    return render_template("company/invoice_new.html")
+
+
+@bp.post("/new")
+def create_invoice():
+    """
+    Reads posted form fields (use your current form names).
+    Saves a PDF to instance/invoices/invoice_<number>.pdf
+    then redirects to /company/invoice/<number>/pdf
+    """
+    form = request.form
+
+    # Minimal field names; adapt only if your form uses different keys.
+    number = form.get("invoice_no") or form.get("number") or "1"
+    date_str = form.get("invoice_date") or datetime.utcnow().strftime("%d-%m-%Y")
+
+    company = {
         "name": "Shree Anunay Agro Pvt Ltd",
         "address": "Dalsingsarai, Samastipur, Bihar",
         "mobile": "9771899097 / 6299176297",
@@ -240,38 +262,63 @@ if __name__ == "__main__":
         "gstin": "10ABOCS8567L1ZO",
     }
 
-    bill_to_info = {
-        "name": "Banga Enterprises (Chandan, Teghra)",
-        "address": "Teghra, Begusarai, Bihar",
-        "driver_no": "1234567890",
-        "vehicle_no": "BR-06GC-4169",
+    bill_to = {
+        "name": form.get("customer_name", ""),
+        "address": form.get("customer_address", ""),
+        "driver_no": form.get("driver_no", ""),
+        "vehicle_no": form.get("vehicle_no", ""),
     }
 
-    invoice_meta_info = {
-        "number": 2,
-        "date": datetime.strptime("23-08-2025", "%d-%m-%Y").strftime("%d-%m-%Y"),
-        "place": "Samastipur"
+    invoice_meta = {
+        "number": number,
+        "date": date_str,
+        "place": form.get("place", ""),
     }
 
-    items_list = [
-        {"sl": 1, "description": "Wheat", "rate": 2700.00, "qty": 243.85, "uom": "Quintal"},
-        # add more items as needed …
-    ]
+    # Single-line item by default; extend as per your form
+    items = [{
+        "sl": 1,
+        "description": form.get("description", "Goods"),
+        "rate": form.get("rate", "0"),
+        "qty": form.get("qty", "0"),
+        "uom": form.get("uom", "Quintal"),
+    }]
 
-    taxes_info = {
-        "cgst_rate": 0.0,
-        "sgst_rate": 0.0,
-        # For IGST use: "igst_rate": 18.0
+    taxes = {
+        "cgst_rate": form.get("cgst_rate", 0) or 0,
+        "sgst_rate": form.get("sgst_rate", 0) or 0,
+        # Use igst_rate if applicable
     }
 
-    build_invoice_pdf(
-        out_path="invoice.pdf",
-        company=company_info,
-        bill_to=bill_to_info,
-        invoice_meta=invoice_meta_info,
-        items=items_list,
-        taxes=taxes_info,
-        footer_note="For queries, contact: {} | {}".format(
-            company_info["mobile"], company_info["email"]
-        ),
+    # Ensure output dir
+    out_dir = os.path.join(current_app.instance_path, "invoices")
+    os.makedirs(out_dir, exist_ok=True)
+    pdf_path = os.path.join(out_dir, f"invoice_{number}.pdf")
+
+    # Generate PDF
+    buf = BytesIO()
+    _build_invoice_pdf(
+        buffer=buf,
+        company=company,
+        bill_to=bill_to,
+        invoice_meta=invoice_meta,
+        items=items,
+        taxes=taxes,
+        footer_note=f"For queries: {company['mobile']} | {company['email']}",
     )
+    with open(pdf_path, "wb") as f:
+        f.write(buf.getvalue())
+
+    return redirect(url_for("invoice.view_pdf", invoice_id=number))
+
+
+@bp.get("/<int:invoice_id>/pdf")
+def view_pdf(invoice_id: int):
+    """
+    Serves the generated PDF from instance/invoices.
+    Matches your previous working URL: /company/invoice/<id>/pdf
+    """
+    pdf_path = os.path.join(current_app.instance_path, "invoices", f"invoice_{invoice_id}.pdf")
+    if not os.path.exists(pdf_path):
+        abort(404)
+    return send_file(pdf_path, mimetype="application/pdf", download_name=f"invoice_{invoice_id}.pdf")
