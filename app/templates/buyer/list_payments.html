@@ -52,7 +52,7 @@
 
   <!-- Filters -->
   <form method="GET" class="row g-2 mb-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <label class="form-label">Buyer</label>
       <select name="mobile" class="form-select">
         <option value="">All</option>
@@ -63,7 +63,7 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
       <label class="form-label">Commodity</label>
       <select name="commodity" class="form-select">
         <option value="">All</option>
@@ -72,11 +72,19 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
       <label class="form-label">Warehouse</label>
       <input name="warehouse" class="form-control" value="{{ request.args.get('warehouse','') }}">
     </div>
-    <div class="col-md-2 d-flex align-items-end">
+    <div class="col-md-2">
+      <label class="form-label">From</label>
+      <input type="date" name="from" value="{{ request.args.get('from','') }}" class="form-control">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">To</label>
+      <input type="date" name="to" value="{{ request.args.get('to','') }}" class="form-control">
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
       <button class="btn btn-outline-primary w-100">Go</button>
     </div>
   </form>
@@ -85,14 +93,28 @@
     <table class="table table-striped align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th>Buyer</th><th>Mobile</th><th>Commodity</th><th>Warehouse</th>
-          <th>Amount</th><th>Reference</th><th class="text-end">Actions</th>
+          <th>Date</th>
+          <th>Buyer</th>
+          <th>Mobile</th>
+          <th>Commodity</th>
+          <th>Warehouse</th>
+          <th>Amount</th>
+          <th>Reference</th>
+          <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for p in payments %}
         <tr data-row>
           <form method="POST" action="{{ url_for('payments.update_payment', payment_id=p.id) }}" class="row-form">
+            <!-- Date (first column) -->
+            <td>
+              <div class="cell-view">{{ p.date|format_date }}</div>
+              <div class="cell-edit">
+                <input type="date" name="date" class="form-control form-control-sm" value="{{ p.date }}">
+              </div>
+            </td>
+
             <!-- Buyer (read-only) -->
             <td>{{ p.buyer_name }}</td>
             <td class="small text-muted">{{ p.mobile_no }}</td>
@@ -148,7 +170,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="text-center text-muted py-4">No payment receipts found.</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4">No payment receipts found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
