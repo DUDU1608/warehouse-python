@@ -311,6 +311,38 @@ def create_invoice():
 
     return redirect(url_for("invoice.view_pdf", invoice_id=number))
 
+# --- minimal list endpoint so url_for('invoice.list_invoices') works ---
+@bp.get("/", endpoint="list_invoices")
+def list_invoices():
+    """
+    Lists PDFs from instance/invoices and renders templates/company/invoice_list.html
+    """
+    import os
+    from flask import current_app, render_template
+
+    out_dir = os.path.join(current_app.instance_path, "invoices")
+    os.makedirs(out_dir, exist_ok=True)
+
+    files = sorted(
+        [f for f in os.listdir(out_dir) if f.lower().endswith(".pdf")],
+        key=lambda x: os.path.getmtime(os.path.join(out_dir, x)),
+        reverse=True,
+    )
+
+    # Pass filenames to your existing template
+    items = []
+    for f in files:
+        invoice_id = None
+        stem = f.rsplit(".", 1)[0]
+        if "_" in stem:
+            tail = stem.split("_", 1)[1]
+            if tail.isdigit():
+                invoice_id = int(tail)
+        items.append({"file": f, "invoice_id": invoice_id})
+
+    return render_template("company/invoice_list.html", items=items)
+
+
 
 @bp.get("/<int:invoice_id>/pdf")
 def view_pdf(invoice_id: int):
