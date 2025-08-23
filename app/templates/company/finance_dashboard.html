@@ -36,7 +36,9 @@
         <!-- New: Residual Earning buttons -->
         <a href="/company/residual-earning/add" class="btn btn-primary module-btn">Add Residual Earning</a>
         <a href="/company/residual-earnings" class="btn btn-info module-btn">Display Residual Earnings</a>
-        <a href="/company/invoice/new" class="btn btn-outline-primary module-btn">Create Invoice (PDF)</a>
+        <a href="{{ url_for('invoice.new_invoice') }}" class="btn btn-outline-dark module-btn">Create Invoice (PDF)</a>
+        <a href="{{ url_for('invoice.list_invoices') }}" class="btn btn-outline-dark module-btn">List Invoices</a>
+
     </div>
 </div>
 </body>
