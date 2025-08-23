@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Stockist Payments</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f7f8fb; }
+    .cell-edit { display: none; }
+    tr.editing .cell-view { display: none; }
+    tr.editing .cell-edit { display: block; }
+    .btn-edit { display: inline-block; }
+    .btn-save, .btn-cancel { display: none; }
+    tr.editing .btn-edit { display: none; }
+    tr.editing .btn-save, tr.editing .btn-cancel { display: inline-block; }
+  </style>
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-lg bg-white border-bottom">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="#">Stockist Module</a>
+    <div class="ms-auto d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="/stockist/dashboard">← Stockist Dashboard</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('stockist_payment.add_payment') }}">Add Payment</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+      <div class="alert alert-{{ 'warning' if cat=='message' else cat }} alert-dismissible fade show" role="alert">
+        {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="fw-bold">🧾 Stockist Payments</h3>
+    <div class="d-flex gap-2">
+      <a class="btn btn-success" href="{{ url_for('stockist_payment.add_payment') }}">➕ Add Payment</a>
+      <a class="btn btn-outline-secondary" href="/stockist/dashboard">← Stockist Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form method="GET" class="row g-2 mb-3">
+    <div class="col-md-3">
+      <label class="form-label">Stockist</label>
+      <select name="mobile" class="form-select">
+        <option value="">All</option>
+        {% for s in stockists %}
+        <option value="{{ s.mobile }}" {% if request.args.get('mobile') == s.mobile %}selected{% endif %}>
+          {{ s.name }} — {{ s.mobile }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Commodity</label>
+      <select name="commodity" class="form-select">
+        <option value="">All</option>
+        {% for c in ['Wheat','Maize','Paddy'] %}
+          <option value="{{ c }}" {% if request.args.get('commodity')==c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Warehouse</label>
+      <input name="warehouse" class="form-control" value="{{ request.args.get('warehouse','') }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">From</label>
+      <input type="date" name="from" value="{{ request.args.get('from','') }}" class="form-control">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">To</label>
+      <input type="date" name="to" value="{{ request.args.get('to','') }}" class="form-control">
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-outline-primary w-100">Go</button>
+    </div>
+  </form>
+
+  <div class="table-responsive bg-white rounded shadow-sm">
+    <table class="table table-striped align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Date</th>
+          <th>Stockist</th>
+          <th>Mobile</th>
+          <th>Commodity</th>
+          <th>Warehouse</th>
+          <th>Amount</th>
+          <th>Bank Reference</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr data-row>
+          <form method="POST" action="{{ url_for('stockist_payment.update_payment', payment_id=p.id) }}" class="row-form">
+            <!-- Date (first column) -->
+            <td>
+              <div class="cell-view">{{ p.date|format_date }}</div>
+              <div class="cell-edit"><input type="date" name="date" class="form-control form-control-sm" value="{{ p.date }}"></div>
+            </td>
+
+            <td>{{ p.stockist_name }}</td>
+            <td class="small text-muted">{{ p.mobile }}</td>
+
+            <td>
+              <div class="cell-view">{{ p.commodity or '—' }}</div>
+              <div class="cell-edit">
+                <select name="commodity" class="form-select form-select-sm">
+                  <option value="" {% if not p.commodity %}selected{% endif %}>—</option>
+                  {% for c in ['Wheat','Maize','Paddy'] %}
+                    <option value="{{ c }}" {% if p.commodity==c %}selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </td>
+
+            <td>
+              <div class="cell-view">{{ p.warehouse or '' }}</div>
+              <div class="cell-edit"><input class="form-control form-control-sm" name="warehouse" value="{{ p.warehouse or '' }}"></div>
+            </td>
+
+            <td class="fw-semibold">
+              <span class="cell-view">{{ p.amount|format_inr }}</span>
+              <span class="cell-edit"><input type="number" step="0.01" name="amount" class="form-control form-control-sm" value="{{ '%.2f'|format(p.amount) }}"></span>
+            </td>
+
+            <td>
+              <div class="cell-view">{{ p.bank_reference or '' }}</div>
+              <div class="cell-edit"><input class="form-control form-control-sm" name="bank_reference" value="{{ p.bank_reference or '' }}"></div>
+            </td>
+
+            <td class="text-end text-nowrap">
+              <button type="button" class="btn btn-sm btn-secondary btn-edit">Edit</button>
+              <button class="btn btn-sm btn-primary btn-save">Save</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary btn-cancel">Cancel</button>
+          </form>
+              <form method="POST" action="{{ url_for('stockist_payment.delete_payment', payment_id=p.id) }}" class="d-inline" onsubmit="return confirm('Delete this payment?');">
+                <button class="btn btn-sm btn-outline-danger">Delete</button>
+              </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-4">No payments found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  function enterEdit(tr){ tr.classList.add('editing'); }
+  function exitEdit(tr){
+    tr.classList.remove('editing');
+    const form = tr.querySelector('form.row-form');
+    if (form && tr.dataset.cancelReset === "1"){
+      form.reset();
+      tr.dataset.cancelReset = "0";
+    }
+  }
+  document.querySelectorAll('tr[data-row]').forEach(function(tr){
+    const editBtn = tr.querySelector('.btn-edit');
+    const cancelBtn = tr.querySelector('.btn-cancel');
+    const saveBtn = tr.querySelector('.btn-save');
+    if (editBtn){ editBtn.addEventListener('click', () => enterEdit(tr)); }
+    if (cancelBtn){
+      cancelBtn.addEventListener('click', () => {
+        tr.dataset.cancelReset = "1";
+        exitEdit(tr);
+      });
+    }
+    if (saveBtn){ /* default submit */ }
+  });
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
