@@ -109,9 +109,9 @@ def create_app() -> Flask:
         PERMANENT_SESSION_LIFETIME=timedelta(minutes=10),
     )
 
-    # Ensure sessions are "permanent" so lifetime applies
     @app.before_request
     def _session_permanent():
+        # Ensure session lifetime applies
         session.permanent = True
 
     # Init extensions
@@ -126,92 +126,187 @@ def create_app() -> Flask:
     app.jinja_env.filters["format_date"] = format_date
     app.jinja_env.filters["to_hindi"] = to_hindi_name
 
-    # ----------------- Blueprints (all INSIDE the factory) -----------------
+    # ----------------- Blueprints (register each independently) -----------------
 
     # Auth / public
     try:
         from .routes import auth
         app.register_blueprint(auth.bp)
     except Exception as e:
-        app.logger.debug("Auth blueprint not registered: %s", e)
+        app.logger.exception("Auth blueprint not registered: %s", e)
 
     # Seller module
     try:
-        from app.routes.seller import (
-            dashboard as seller_dashboard,
-            seller,
-            purchase,
-            payment,
-            due,
-        )
+        from app.routes.seller import dashboard as seller_dashboard
         app.register_blueprint(seller_dashboard.bp)
+    except Exception as e:
+        app.logger.exception("Seller dashboard blueprint failed: %s", e)
+    try:
+        from app.routes.seller import seller
         app.register_blueprint(seller.bp)
+    except Exception as e:
+        app.logger.exception("Seller blueprint failed: %s", e)
+    try:
+        from app.routes.seller import purchase
         app.register_blueprint(purchase.bp)
+    except Exception as e:
+        app.logger.exception("Purchase blueprint failed: %s", e)
+    try:
+        from app.routes.seller import payment
         app.register_blueprint(payment.bp)
+    except Exception as e:
+        app.logger.exception("Seller payment blueprint failed: %s", e)
+    try:
+        from app.routes.seller import due
         app.register_blueprint(due.bp)
     except Exception as e:
-        app.logger.debug("Seller blueprints not fully registered: %s", e)
+        app.logger.exception("Seller due blueprint failed: %s", e)
 
     # Stockist module
     try:
-        from app.routes.stockist import (
-            dashboard as stockist_dashboard,
-            stockist,
-            stockdata,
-            stockexit,
-            loandata,
-            margindata,
-            rental_calculator,
-        )
-
+        from app.routes.stockist import dashboard as stockist_dashboard
         app.register_blueprint(stockist_dashboard.bp)
-        app.register_blueprint(stockist.bp)
-        app.register_blueprint(stockdata.bp)
-        app.register_blueprint(stockexit.bp)
-        app.register_blueprint(loandata.bp)
-        app.register_blueprint(margindata.bp)
-        app.register_blueprint(rental_calculator.bp)
-
-        # Optional: stockist payments (module may be stockist_payment.py)
-        try:
-            from app.routes.stockist import stockist_payment
-            app.register_blueprint(stockist_payment.bp)
-        except Exception as e:
-            app.logger.debug("Stockist payment blueprint not registered: %s", e)
-
-        # NEW: Stockist Loan Repayment
-        try:
-            from app.routes.stockist import loan_repayment as stockist_loan_repayment
-            app.register_blueprint(stockist_loan_repayment.bp)
-        except Exception as e:
-            app.logger.debug("Stockist loan repayment blueprint not registered: %s", e)
-
     except Exception as e:
-        app.logger.debug("Stockist blueprints not fully registered: %s", e)
+        app.logger.exception("Stockist dashboard blueprint failed: %s", e)
+    try:
+        from app.routes.stockist import stockist
+        app.register_blueprint(stockist.bp)
+    except Exception as e:
+        app.logger.exception("Stockist blueprint failed: %s", e)
+    try:
+        from app.routes.stockist import stockdata
+        app.register_blueprint(stockdata.bp)
+    except Exception as e:
+        app.logger.exception("Stockdata blueprint failed: %s", e)
+    try:
+        from app.routes.stockist import stockexit
+        app.register_blueprint(stockexit.bp)
+    except Exception as e:
+        app.logger.exception("Stockexit blueprint failed: %s", e)
+    try:
+        from app.routes.stockist import loandata
+        app.register_blueprint(loandata.bp)
+    except Exception as e:
+        app.logger.exception("Loandata blueprint failed: %s", e)
+    try:
+        from app.routes.stockist import margindata
+        app.register_blueprint(margindata.bp)
+    except Exception as e:
+        app.logger.exception("Margindata blueprint failed: %s", e)
+    try:
+        from app.routes.stockist import rental_calculator
+        app.register_blueprint(rental_calculator.bp)
+    except Exception as e:
+        app.logger.exception("Rental calculator blueprint failed: %s", e)
+    # Optional: stockist payments
+    try:
+        from app.routes.stockist import stockist_payment
+        app.register_blueprint(stockist_payment.bp)
+    except Exception as e:
+        app.logger.debug("Stockist payment blueprint not registered: %s", e)
+    # Optional: stockist loan repayment
+    try:
+        from app.routes.stockist import loan_repayment as stockist_loan_repayment
+        app.register_blueprint(stockist_loan_repayment.bp)
+    except Exception as e:
+        app.logger.debug("Stockist loan repayment blueprint not registered: %s", e)
 
     # Buyer module
     try:
-        from app.routes.buyer import (
-            dashboard as buyer_dashboard,
-            buyer,
-            sales,
-            payments,
-        )
+        from app.routes.buyer import dashboard as buyer_dashboard
         app.register_blueprint(buyer_dashboard.bp)
+    except Exception as e:
+        app.logger.exception("Buyer dashboard blueprint failed: %s", e)
+    try:
+        from app.routes.buyer import buyer
         app.register_blueprint(buyer.bp)
+    except Exception as e:
+        app.logger.exception("Buyer blueprint failed: %s", e)
+    try:
+        from app.routes.buyer import sales
         app.register_blueprint(sales.bp)
+    except Exception as e:
+        app.logger.exception("Buyer sales blueprint failed: %s", e)
+    try:
+        from app.routes.buyer import payments
         app.register_blueprint(payments.bp)
     except Exception as e:
-        app.logger.debug("Buyer blueprints not fully registered: %s", e)
+        app.logger.exception("Buyer payments blueprint failed: %s", e)
 
-    # Company module
-    
+    # Company module (each separately so one bad module doesn't hide others)
+    try:
+        from app.routes.company import dashboard as company_dashboard
+        app.register_blueprint(company_dashboard.bp)
+    except Exception as e:
+        app.logger.exception("company.dashboard failed: %s", e)
+    try:
+        from app.routes.company import companyloan
+        app.register_blueprint(companyloan.bp)
+    except Exception as e:
+        app.logger.exception("company.companyloan failed: %s", e)
+    try:
+        from app.routes.company import loanrepayment
+        app.register_blueprint(loanrepayment.bp)
+    except Exception as e:
+        app.logger.exception("company.loanrepayment failed: %s", e)
+    try:
+        from app.routes.company import interest_payble
+        app.register_blueprint(interest_payble.bp)
+    except Exception as e:
+        app.logger.exception("company.interest_payble failed: %s", e)
+    try:
+        from app.routes.company import interest_receivable
+        app.register_blueprint(interest_receivable.bp)
+    except Exception as e:
+        app.logger.exception("company.interest_receivable failed: %s", e)
+    try:
+        from app.routes.company import rental_due
+        app.register_blueprint(rental_due.bp)
+    except Exception as e:
+        app.logger.exception("company.rental_due failed: %s", e)
+    try:
+        from app.routes.company import expenditure
+        app.register_blueprint(expenditure.bp)
+    except Exception as e:
+        app.logger.exception("company.expenditure failed: %s", e)
+    try:
+        from app.routes.company import breakeven_calculator
+        app.register_blueprint(breakeven_calculator.bp)
+    except Exception as e:
+        app.logger.exception("company.breakeven_calculator failed: %s", e)
+    try:
+        from app.routes.company import profit_loss
+        app.register_blueprint(profit_loss.bp)
+    except Exception as e:
+        app.logger.exception("company.profit_loss failed: %s", e)
+    try:
+        from app.routes.company import final_report
+        app.register_blueprint(final_report.bp)
+    except Exception as e:
+        app.logger.exception("company.final_report failed: %s", e)
+    try:
+        from app.routes.company import company_loan_due
+        app.register_blueprint(company_loan_due.bp)
+    except Exception as e:
+        app.logger.exception("company.company_loan_due failed: %s", e)
+    try:
+        from app.routes.company import residual_earning
+        app.register_blueprint(residual_earning.bp)
+    except Exception as e:
+        app.logger.exception("company.residual_earning failed: %s", e)
+    # Keep invoice last; if it fails you still have /company/finance working
+    try:
+        from app.routes.company import invoice
+        app.register_blueprint(invoice.bp)
+    except Exception as e:
+        app.logger.exception("company.invoice failed: %s", e)
+
     # Stock summary
     try:
         from app.routes.stock_summary import bp as stock_summary_bp
         app.register_blueprint(stock_summary_bp)
     except Exception as e:
-        app.logger.debug("Stock summary blueprint not registered: %s", e)
+        app.logger.exception("Stock summary blueprint not registered: %s", e)
 
     # User (seller/stockist) login + views
     try:
@@ -219,12 +314,12 @@ def create_app() -> Flask:
         app.register_blueprint(user_auth_bp)
         app.register_blueprint(user_view_bp)
     except Exception as e:
-        app.logger.debug("User blueprints not fully registered: %s", e)
+        app.logger.exception("User blueprints not fully registered: %s", e)
 
     # ----------------- Assistant (chat / Socket.IO) -----------------
     assistant_module = None
     last_err = None
-    for dotted in ("app.assistant", "app.app.assistant"):
+    for dotted in ("app.assistant", "app.app.assistant"):  # try common layouts
         try:
             assistant_module = import_module(dotted)
             app.logger.info("Assistant module loaded from %s", dotted)
