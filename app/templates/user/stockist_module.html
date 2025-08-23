@@ -10,6 +10,8 @@
     body { background-color: #f5f8fa; }
     .card { border-radius: 10px; }
     .lang-wrap { display:flex; justify-content:flex-end; align-items:center; gap:.5rem; }
+    .small-muted { font-size:.875rem; color:#6c757d; }
+    .table thead th { white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -63,14 +65,15 @@
   <div class="tab-content">
     <!-- My Materials Stored -->
     <div class="tab-pane fade show active" id="materials">
+      <!-- Net summary cards (backward-compatible: uses material_summary) -->
       <h5 class="text-success fw-semibold mb-3"
-          data-hi="📋 सारांश (एमटी में)"
-          data-en="📋 Summary (in MT)">📋 सारांश (एमटी में)</h5>
+          data-hi="📋 नेट सारांश (एमटी में)"
+          data-en="📋 Net Summary (in MT)">📋 नेट सारांश (एमटी में)</h5>
 
       <div class="row">
         {% for wh, data in material_summary.items() %}
         <div class="col-md-4 mb-3">
-          <div class="card border-primary shadow-sm">
+          <div class="card border-primary shadow-sm h-100">
             <div class="card-body">
               <h6 class="card-title text-primary fw-bold">{{ wh | to_hindi }}</h6>
               {% for com, qty in data.items() %}
@@ -80,11 +83,54 @@
           </div>
         </div>
         {% endfor %}
+        {% if not material_summary %}
+        <div class="col-12"><p class="text-muted small">कोई डेटा नहीं / No data.</p></div>
+        {% endif %}
       </div>
 
+      <!-- In/Out/Net summary table (uses material_io) -->
       <h5 class="mt-4 text-secondary fw-semibold"
-          data-hi="📄 विस्तृत प्रविष्टियाँ"
-          data-en="📄 Detailed Entries">📄 विस्तृत प्रविष्टियाँ</h5>
+          data-hi="↕️ आने-जाने का सारांश (एमटी)"
+          data-en="↕️ In/Out Summary (MT)">↕️ आने-जाने का सारांश (एमटी)</h5>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover small align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th data-hi="वेयरहाउस" data-en="Warehouse">वेयरहाउस</th>
+              <th data-hi="वस्तु" data-en="Commodity">वस्तु</th>
+              <th data-hi="इन (MT)" data-en="IN (MT)">इन (MT)</th>
+              <th data-hi="आउट (MT)" data-en="OUT (MT)">आउट (MT)</th>
+              <th data-hi="नेट (MT)" data-en="NET (MT)">नेट (MT)</th>
+              <th data-hi="अंतिम इन तिथि" data-en="Last IN Date">अंतिम इन तिथि</th>
+              <th data-hi="अंतिम आउट तिथि" data-en="Last OUT Date">अंतिम आउट तिथि</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for wh, com_map in material_io.items() %}
+              {% for com, r in com_map.items() %}
+              <tr>
+                <td>{{ wh | to_hindi }}</td>
+                <td>{{ com | to_hindi }}</td>
+                <td>{{ '%.3f'|format(r.in_mt) }}</td>
+                <td>{{ '%.3f'|format(r.out_mt) }}</td>
+                <td class="fw-semibold">{{ '%.3f'|format(r.net_mt) }}</td>
+                <td>{{ r.last_in|format_date if r.last_in else '—' }}</td>
+                <td>{{ r.last_out|format_date if r.last_out else '—' }}</td>
+              </tr>
+              {% endfor %}
+            {% endfor %}
+            {% if not material_io %}
+            <tr><td colspan="7" class="text-center text-muted">कोई डेटा नहीं / No data.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Detailed IN entries (StockData) -->
+      <h5 class="mt-4 text-secondary fw-semibold"
+          data-hi="📄 विस्तृत प्रविष्टियाँ — इन (Stock IN)"
+          data-en="📄 Detailed Entries — IN (Stock IN)">📄 विस्तृत प्रविष्टियाँ — इन (Stock IN)</h5>
 
       <div class="table-responsive">
         <table class="table table-bordered table-striped table-hover small">
@@ -102,13 +148,61 @@
             {% for entry in stock_data %}
             <tr>
               <td>{{ entry.date | format_date }}</td>
-              <td>{{ entry.warehouse | to_hindi}}</td>
+              <td>{{ entry.warehouse | to_hindi }}</td>
               <td>{{ entry.rst_no }}</td>
-              <td>{{ entry.commodity | to_hindi}}</td>
+              <td>{{ entry.commodity | to_hindi }}</td>
               <td>{{ entry.quantity or 0 }}</td>
               <td>{{ entry.quality }}</td>
             </tr>
             {% endfor %}
+            {% if not stock_data %}
+            <tr><td colspan="6" class="text-center text-muted">कोई IN एंट्री नहीं / No IN entries.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Detailed EXIT entries (StockExit) -->
+      <h5 class="mt-4 text-secondary fw-semibold"
+          data-hi="📄 विस्तृत प्रविष्टियाँ — आउट (Stock EXIT)"
+          data-en="📄 Detailed Entries — OUT (Stock EXIT)">📄 विस्तृत प्रविष्टियाँ — आउट (Stock EXIT)</h5>
+
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover small">
+          <thead class="table-dark">
+            <tr>
+              <th data-hi="तिथि" data-en="Date">तिथि</th>
+              <th data-hi="वेयरहाउस" data-en="Warehouse">वेयरहाउस</th>
+              <th data-hi="वस्तु" data-en="Commodity">वस्तु</th>
+              <th data-hi="मात्रा (किग्रा)" data-en="Quantity (kg)">मात्रा (किग्रा)</th>
+              <th data-hi="रिडक्शन (किग्रा)" data-en="Reduction (kg)">रिडक्शन (किग्रा)</th>
+              <th data-hi="नेट मात्रा (किग्रा)" data-en="Net Qty (kg)">नेट मात्रा (किग्रा)</th>
+              <th data-hi="गुणवत्ता" data-en="Quality">गुणवत्ता</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if stock_out_list is defined %}
+              {% for entry in stock_out_list %}
+              <tr>
+                <td>{{ entry.date | format_date }}</td>
+                <td>{{ entry.warehouse | to_hindi }}</td>
+                <td>{{ entry.commodity | to_hindi }}</td>
+                <td>{{ entry.quantity or 0 }}</td>
+                <td>{{ entry.reduction or 0 }}</td>
+                <td>{{ entry.net_qty or 0 }}</td>
+                <td>{{ entry.quality or '' }}</td>
+              </tr>
+              {% endfor %}
+              {% if not stock_out_list %}
+              <tr><td colspan="7" class="text-center text-muted">कोई OUT एंट्री नहीं / No OUT entries.</td></tr>
+              {% endif %}
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted">
+                  <span class="small-muted">NOTE: Template expects <code>stock_out_list</code> in context for Stock EXIT details.</span>
+                </td>
+              </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -123,7 +217,7 @@
       <div class="row">
         {% for wh, data in loan_summary.items() %}
         <div class="col-md-4 mb-3">
-          <div class="card border-success shadow-sm">
+          <div class="card border-success shadow-sm h-100">
             <div class="card-body">
               <h6 class="card-title text-success fw-bold">{{ wh | to_hindi }}</h6>
               <p class="mb-1" data-hi="कुल नकद ऋण — {{ data.cash | format_inr }}" data-en="Total Cash Loan — {{ data.cash | format_inr }}">
@@ -139,6 +233,9 @@
           </div>
         </div>
         {% endfor %}
+        {% if not loan_summary %}
+        <div class="col-12"><p class="text-muted small">कोई डेटा नहीं / No data.</p></div>
+        {% endif %}
       </div>
 
       <h5 class="mt-4 text-secondary fw-semibold"
@@ -161,11 +258,14 @@
             <tr>
               <td>{{ entry.date | format_date }}</td>
               <td>{{ entry.warehouse | to_hindi }}</td>
-              <td>{{ entry.commodity | to_hindi}}</td>
+              <td>{{ entry.commodity | to_hindi }}</td>
               <td>{{ entry.loan_type | to_hindi }}</td>
               <td>{{ entry.amount | format_inr }}</td>
             </tr>
             {% endfor %}
+            {% if not loan_data %}
+            <tr><td colspan="5" class="text-center text-muted">कोई एंट्री नहीं / No entries.</td></tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -180,7 +280,7 @@
       <div class="row">
         {% for wh, total in margin_summary.items() %}
         <div class="col-md-4 mb-3">
-          <div class="card border-warning shadow-sm">
+          <div class="card border-warning shadow-sm h-100">
             <div class="card-body">
               <h6 class="card-title text-warning fw-bold">{{ wh | to_hindi }}</h6>
               <p class="mb-0 fw-semibold"
@@ -192,6 +292,9 @@
           </div>
         </div>
         {% endfor %}
+        {% if not margin_summary %}
+        <div class="col-12"><p class="text-muted small">कोई डेटा नहीं / No data.</p></div>
+        {% endif %}
       </div>
 
       <h5 class="mt-4 text-secondary fw-semibold"
@@ -212,11 +315,14 @@
             {% for entry in margin_data %}
             <tr>
               <td>{{ entry.date | format_date }}</td>
-              <td>{{ entry.warehouse | to_hindi}}</td>
+              <td>{{ entry.warehouse | to_hindi }}</td>
               <td>{{ entry.commodity | to_hindi }}</td>
               <td>{{ entry.amount | format_inr }}</td>
             </tr>
             {% endfor %}
+            {% if not margin_data %}
+            <tr><td colspan="4" class="text-center text-muted">कोई एंट्री नहीं / No entries.</td></tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -232,9 +338,9 @@
       <div class="row">
         {% for wh, comms in rental_due.items() %}
         <div class="col-md-4 mb-3">
-          <div class="card border-info shadow-sm">
+          <div class="card border-info shadow-sm h-100">
             <div class="card-body">
-              <h6 class="card-title text-info fw-bold">{{ wh | to_hindi}}</h6>
+              <h6 class="card-title text-info fw-bold">{{ wh | to_hindi }}</h6>
               <ul class="mb-0">
                 {% for commodity, amount in comms.items() %}
                   <li>{{ commodity }} — <strong>₹{{ "{:,.2f}".format(amount) }}</strong></li>
@@ -263,7 +369,7 @@
       <div class="row">
         {% for wh, amt in interest_due.items() %}
         <div class="col-md-4 mb-3">
-          <div class="card border-warning shadow-sm">
+          <div class="card border-warning shadow-sm h-100">
             <div class="card-body">
               <h6 class="card-title text-warning fw-bold">{{ wh | to_hindi }}</h6>
               <p class="mb-0"
