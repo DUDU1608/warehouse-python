@@ -9,6 +9,7 @@
     .card { border-radius: 12px; box-shadow: 0 2px 14px rgba(0,0,0,.06); }
     .form-label { font-weight: 600; color: #284b9b; }
     .table thead th { background: #0a3871; color: #fff; }
+    .muted { color:#6c757d; }
   </style>
 </head>
 <body>
@@ -38,14 +39,12 @@
           {% endfor %}
         </select>
       </div>
+
       <div class="col-md-3">
         <label class="form-label">Date <span class="text-danger">*</span></label>
         <input type="date" name="date" class="form-control" value="{{ input_date or '' }}" required>
       </div>
-      <div class="col-md-2">
-        <label class="form-label">Rate (₹/kg)</label>
-        <input type="number" step="0.0001" name="rate" class="form-control" value="{{ input_rate or '' }}" placeholder="e.g. 22.50">
-      </div>
+
       <div class="col-md-2">
         <label class="form-label">Commodity</label>
         <select name="commodity" class="form-select">
@@ -55,6 +54,7 @@
           {% endfor %}
         </select>
       </div>
+
       <div class="col-md-2">
         <label class="form-label">Warehouse</label>
         <select name="warehouse" class="form-select">
@@ -64,6 +64,35 @@
           {% endfor %}
         </select>
       </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Quality</label>
+        <select name="quality" class="form-select">
+          <option value="" {% if not input_quality %}selected{% endif %}>All</option>
+          <option value="Good" {% if input_quality=='Good' %}selected{% endif %}>Good</option>
+          <option value="BD" {% if input_quality=='BD' %}selected{% endif %}>BD</option>
+        </select>
+      </div>
+
+      <!-- NEW: split pricing inputs -->
+      <div class="col-12"><hr class="mt-0"></div>
+
+      <div class="col-md-3">
+        <label class="form-label">Rate (Good) ₹/kg</label>
+        <input type="number" step="0.01" name="rate_good" class="form-control" value="{{ input_rate_good or '' }}" placeholder="e.g. 23.50">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Rate (BD) ₹/kg</label>
+        <input type="number" step="0.01" name="rate_bd" class="form-control" value="{{ input_rate_bd or '' }}" placeholder="e.g. 21.00">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">BD Quantity (kg)</label>
+        <input type="number" step="0.001" name="bd_qty" class="form-control" value="{{ input_bd_qty or '' }}" placeholder="e.g. 12000">
+        <div class="form-text">Only this quantity will use BD rate; rest uses Good rate.</div>
+      </div>
+
       <div class="col-12 d-flex justify-content-end">
         <button class="btn btn-primary">Generate</button>
       </div>
@@ -76,17 +105,22 @@
       <table class="table table-bordered align-middle mb-0">
         <thead>
           <tr>
-            <th>Total Quantity (kg)</th>
+            <th>Total Qty (kg)</th>
             <th>Reduction (kg)</th>
-            <th>Net Quantity (kg)</th>
-            <th>Rate (₹/kg)</th>
-            <th>Total Cost (₹)</th>
-            <th>Rental (₹)</th>
-            <th>Interest (₹)</th>
-            <th>Cash Loan (₹)</th>
-            <th>Margin Loan (₹)</th>
-            <th>Margin Paid (₹)</th>
-            <th>Net Payable (₹)</th>
+            <th>Net Qty (kg)</th>
+            <th>BD Qty (kg)</th>
+            <th>Good Qty (kg)</th>
+            <th>Rate (BD)</th>
+            <th>Rate (Good)</th>
+            <th>Cost (BD)</th>
+            <th>Cost (Good)</th>
+            <th>Total Cost</th>
+            <th>Rental</th>
+            <th>Interest</th>
+            <th>Cash Loan</th>
+            <th>Margin Loan</th>
+            <th>Margin Paid</th>
+            <th class="text-success">Net Payable</th>
           </tr>
         </thead>
         <tbody>
@@ -94,24 +128,30 @@
             <td>{{ result.total_qty }}</td>
             <td>{{ result.reduction }}</td>
             <td>{{ result.net_qty }}</td>
-            <td>{{ result.rate }}</td>
-            <td>{{ result.total_cost }}</td>
-            <td>{{ result.rental }}</td>
-            <td>{{ result.interest }}</td>
-            <td>{{ result.cash_loan }}</td>
-            <td>{{ result.margin_loan }}</td>
-            <td>{{ result.margin_paid }}</td>
-            <td class="fw-bold text-success">{{ result.net_payable }}</td>
+            <td>{{ result.bd_qty }}</td>
+            <td>{{ result.good_qty }}</td>
+            <td>₹{{ '%.2f'|format(result.rate_bd) }}</td>
+            <td>₹{{ '%.2f'|format(result.rate_good) }}</td>
+            <td>₹{{ '%.2f'|format(result.cost_bd) }}</td>
+            <td>₹{{ '%.2f'|format(result.cost_good) }}</td>
+            <td class="fw-semibold">₹{{ '%.2f'|format(result.total_cost) }}</td>
+            <td>₹{{ '%.2f'|format(result.rental) }}</td>
+            <td>₹{{ '%.2f'|format(result.interest) }}</td>
+            <td>₹{{ '%.2f'|format(result.cash_loan) }}</td>
+            <td>₹{{ '%.2f'|format(result.margin_loan) }}</td>
+            <td>₹{{ '%.2f'|format(result.margin_paid) }}</td>
+            <td class="fw-bold text-success">₹{{ '%.2f'|format(result.net_payable) }}</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <div class="mt-2 text-muted small">
+
+    <div class="mt-3 muted small">
       <ul class="mb-0">
-        <li>Reduction is computed as 1.5% of Total Quantity on Maize</li>
-        <li>Rent is calculated at Rs 3.34/ton/dat till date</li>
-        <li>Total Cost uses Net Quantity × Rate (₹ per kg).</li>
-        <li>Interest is summed from InterestData (if available) up to the selected date for the selected combination.</li>
+        <li><strong>Split pricing:</strong> BD Quantity is valued at <em>Rate (BD)</em>; remaining Net Qty is valued at <em>Rate (Good)</em>.</li>
+        <li><strong>Reduction:</strong> 1.5% of Total Quantity applied only for Maize.</li>
+        <li><strong>Rental:</strong> ₹3.334 per ton per day (or flat where applicable), computed up to selected date.</li>
+        <li><strong>Interest:</strong> Simple daily interest @13.75% p.a. on net outstanding as of selected date.</li>
       </ul>
     </div>
   </div>
