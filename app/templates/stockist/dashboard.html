@@ -39,7 +39,7 @@
             cursor: pointer;
             letter-spacing: .7px;
         }
-        /* 12 different gradient/color styles */
+        /* gradient styles */
         .btn1  { background: linear-gradient(90deg, #0170fa 60%, #02d3e5 100%); }
         .btn2  { background: linear-gradient(90deg, #0170fa 60%, #02d3e5 100%); }
         .btn3  { background: linear-gradient(90deg, #0170fa 60%, #02d3e5 100%); }
@@ -52,6 +52,10 @@
         .btn10 { background: linear-gradient(90deg, #654ea3 60%, #eaafc8 100%); }
         .btn11 { background: linear-gradient(90deg, #005c97 60%, #363795 100%); }
         .btn12 { background: linear-gradient(90deg, #fc00ff 60%, #00dbde 100%); }
+        /* new styles for Stockist Payment buttons */
+        .btn13 { background: linear-gradient(90deg, #0f9b0f 60%, #00b09b 100%); } /* green-teal */
+        .btn14 { background: linear-gradient(90deg, #ff9966 60%, #ff5e62 100%); } /* orange-red */
+
         .btn-module:hover, .btn-module:focus {
             transform: translateY(-2px) scale(1.045);
             box-shadow: 0 6px 24px #abbedc3a;
@@ -82,11 +86,14 @@
             <button class="btn-module btn7"  onclick="location.href='/stockist/list'">Display Stockist</button>
             <button class="btn-module btn8"  onclick="location.href='/stockdata/list'">Display Stock Data</button>
 
-            <button class="btn-module btn10"  onclick="location.href='/loandata/list'">Display Loan Data</button>
+            <button class="btn-module btn10" onclick="location.href='/loandata/list'">Display Loan Data</button>
             <button class="btn-module btn11" onclick="location.href='/margindata/list'">Display Margin Data</button>
             <button class="btn-module btn9"  onclick="location.href='/rental/calculator'">Rental Calculator</button>
-            <button class="btn-module btn12"  on
-                    click="location.href='/stockist/interest-calculator'">Interest Calculator</button>
+            <button class="btn-module btn12" onclick="location.href='/stockist/interest-calculator'">Interest Calculator</button>
+
+            <!-- New: Stockist Payment buttons -->
+            <button class="btn-module btn13" onclick="location.href='/stockist/add-payment'">Add Stockist Payment</button>
+            <button class="btn-module btn14" onclick="location.href='/stockist/payments'">Display Stockist Payments</button>
         </div>
         <div class="text-center mt-4">
             <a href="/dashboard" class="btn btn-outline-secondary px-4 py-2" style="font-weight: 500;">← Back to Admin Dashboard</a>
@@ -95,6 +102,3 @@
 </body>
 {% include "_admin_socket_alert.html" %}
 </html>
-
-
-
