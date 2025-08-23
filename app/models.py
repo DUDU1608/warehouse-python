@@ -164,6 +164,7 @@ class BuyerSale(db.Model):
 class BuyerPayment(db.Model):
     __tablename__ = "buyer_payment"
     id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True, default=date.today)
     buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
     buyer_name = db.Column(db.String(150))
     mobile_no = db.Column(db.String(20))
