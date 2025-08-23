@@ -1,24 +1,45 @@
-from app import db, login_manager
-from flask_login import UserMixin
+# app/models.py
+from datetime import date, datetime
 
+from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from app import db, login_manager
+
+
+# ---------------------------
+# Auth / Users
+# ---------------------------
 class User(db.Model, UserMixin):
+    __tablename__ = "user"                          # keep existing table name
+    __table_args__ = {"extend_existing": True}      # guard against duplicate imports
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100))
-    mobile = db.Column(db.String(15), unique=True)
-    password_hash = db.Column(db.String(128))  # ✅ add this
+    mobile = db.Column(db.String(15), unique=True, index=True)
+    password_hash = db.Column(db.String(128), nullable=True)
 
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+    def set_password(self, password: str):
+        self.password_hash = generate_password_hash(password, method="pbkdf2:sha256")
 
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    def check_password(self, password: str) -> bool:
+        return check_password_hash(self.password_hash or "", password)
+
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    try:
+        return User.query.get(int(user_id))
+    except Exception:
+        return None
+
+
+# ---------------------------
+# Seller / Purchases / Payments
+# ---------------------------
 class Seller(db.Model):
+    __tablename__ = "seller"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100))
     mobile = db.Column(db.String(15), unique=True)
@@ -28,15 +49,12 @@ class Seller(db.Model):
     ifsc_code = db.Column(db.String(20))
     bank_name = db.Column(db.String(100))
 
-from app import db
-
-
-from datetime import date, datetime
-
 
 class Payment(db.Model):
+    __tablename__ = "payment"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    date = db.Column(db.Date, nullable=False, default=date.today)   # <-- Add this line!
+    date = db.Column(db.Date, nullable=False, default=date.today)
     seller_name = db.Column(db.String(100), nullable=False)
     warehouse = db.Column(db.String(100), nullable=False)
     commodity = db.Column(db.String(50), nullable=False)
@@ -46,7 +64,10 @@ class Payment(db.Model):
     amount_paid = db.Column(db.Float, nullable=False)
     bank_reference = db.Column(db.String(100), nullable=False)
 
+
 class Purchase(db.Model):
+    __tablename__ = "purchase"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.String(20))
     rst_no = db.Column(db.String(50))
@@ -62,11 +83,18 @@ class Purchase(db.Model):
     handling = db.Column(db.Float)
     net_cost = db.Column(db.Float)
     quality = db.Column(db.String(20))
+
     __table_args__ = (
-        db.UniqueConstraint('rst_no', 'warehouse', name='uix_rstno_warehouse'),
+        db.UniqueConstraint("rst_no", "warehouse", name="uix_rstno_warehouse"),
     )
 
+
+# ---------------------------
+# Stockist / Stock
+# ---------------------------
 class Stockist(db.Model):
+    __tablename__ = "stockist"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100))
     mobile = db.Column(db.String(15), unique=True)
@@ -76,7 +104,10 @@ class Stockist(db.Model):
     ifsc_code = db.Column(db.String(20))
     bank_name = db.Column(db.String(100))
 
+
 class StockData(db.Model):
+    __tablename__ = "stock_data"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
     rst_no = db.Column(db.String(50), nullable=False)
@@ -92,16 +123,17 @@ class StockData(db.Model):
     handling = db.Column(db.Float)
     net_cost = db.Column(db.Float)
     quality = db.Column(db.String(40))
-    kind_of_stock = db.Column(db.String(20), default='self')   # Always set by backend
+    kind_of_stock = db.Column(db.String(20), default="self")   # set by backend
 
-from app import db
 
 class StockExit(db.Model):
+    __tablename__ = "stock_exit"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
     warehouse = db.Column(db.String(100), nullable=False)
     stockist_name = db.Column(db.String(100), nullable=False)
-    mobile = db.Column(db.String(20), nullable=True)
+    mobile = db.Column(db.String(20))
     commodity = db.Column(db.String(30), nullable=False)
     quantity = db.Column(db.Float, nullable=False)
     reduction = db.Column(db.Float, nullable=False)
@@ -110,19 +142,27 @@ class StockExit(db.Model):
     cost = db.Column(db.Float, nullable=False)
     handling = db.Column(db.Float, nullable=False)
     net_cost = db.Column(db.Float, nullable=False)
-    quality = db.Column(db.String(30), nullable=True)
+    quality = db.Column(db.String(30))
 
-# models.py
+
+# ---------------------------
+# Financing (stockist-level)
+# ---------------------------
 class LoanData(db.Model):
+    __tablename__ = "loan_data"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
     stockist_name = db.Column(db.String(100), nullable=False)
     warehouse = db.Column(db.String(100))
     commodity = db.Column(db.String(30))
-    loan_type = db.Column(db.String(30))  # e.g. "Cash", "Margin"
+    loan_type = db.Column(db.String(30))  # "Cash", "Margin"
     amount = db.Column(db.Float, nullable=False)
 
+
 class MarginData(db.Model):
+    __tablename__ = "margin_data"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
     stockist_name = db.Column(db.String(100), nullable=False)
@@ -130,11 +170,13 @@ class MarginData(db.Model):
     commodity = db.Column(db.String(20), nullable=False)
     amount = db.Column(db.Float, nullable=False)
 
+
 class StockistPayment(db.Model):
     __tablename__ = "stockist_payment"
+
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, index=True, default=date.today)
-    stockist_id = db.Column(db.Integer, db.ForeignKey("stockist.id"), nullable=True, index=True)
+    stockist_id = db.Column(db.Integer, db.ForeignKey("stockist.id"), index=True)
     stockist_name = db.Column(db.String(100), nullable=False)
     mobile = db.Column(db.String(20))
     warehouse = db.Column(db.String(150))
@@ -143,21 +185,27 @@ class StockistPayment(db.Model):
     bank_reference = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+
 class StockistLoanRepayment(db.Model):
     __tablename__ = "stockist_loan_repayment"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False, default=date.today)
     stockist_name = db.Column(db.String(100), nullable=False, index=True)
-    mobile = db.Column(db.String(20), nullable=True, index=True)
-    warehouse = db.Column(db.String(100), nullable=True)
-    commodity = db.Column(db.String(30), nullable=True)
+    mobile = db.Column(db.String(20), index=True)
+    warehouse = db.Column(db.String(100))
+    commodity = db.Column(db.String(30))
     amount = db.Column(db.Float, nullable=False)
-    bank_reference = db.Column(db.String(120), nullable=True)
+    bank_reference = db.Column(db.String(120))
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
+# ---------------------------
+# Buyer / Sales
+# ---------------------------
 class Buyer(db.Model):
     __tablename__ = "buyer"
+
     id = db.Column(db.Integer, primary_key=True)
     buyer_name = db.Column(db.String(150), nullable=False, index=True)
     mobile_no = db.Column(db.String(20), nullable=False, unique=True, index=True)
@@ -170,6 +218,7 @@ class Buyer(db.Model):
 
 class BuyerSale(db.Model):
     __tablename__ = "buyer_sale"
+
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, index=True)
     rst_no = db.Column(db.String(50), nullable=False)
@@ -183,12 +232,13 @@ class BuyerSale(db.Model):
     cost = db.Column(db.Float, nullable=False)
     handling_charge = db.Column(db.Float, default=0.0)
     net_cost = db.Column(db.Float, nullable=False)  # cost + handling
-    quality = db.Column(db.String(20))  # Good / BD
+    quality = db.Column(db.String(20))              # Good / BD
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class BuyerPayment(db.Model):
     __tablename__ = "buyer_payment"
+
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, index=True, default=date.today)
     buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
@@ -200,27 +250,38 @@ class BuyerPayment(db.Model):
     reference = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+
+# ---------------------------
+# Invoicing (aligned with invoice.py)
+# ---------------------------
 class Invoice(db.Model):
     __tablename__ = "invoice"
+
     id = db.Column(db.Integer, primary_key=True)
     invoice_no = db.Column(db.Integer, nullable=False, unique=True, index=True)
     date = db.Column(db.Date, nullable=False)
-    customer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+
+    # IMPORTANT: matches invoice.py (uses buyer_id, not customer_id)
+    buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+
     customer_name = db.Column(db.String(150), nullable=False)
     address = db.Column(db.String(255))
     vehicle_no = db.Column(db.String(50))
     driver_no = db.Column(db.String(50))
-    subtotal = db.Column(db.Float, default=0)
-    cgst = db.Column(db.Float, default=0)  # always 0 per spec
-    sgst = db.Column(db.Float, default=0)  # always 0 per spec
-    grand_total = db.Column(db.Float, default=0)
+
+    sub_total = db.Column(db.Float, default=0.0)    # matches invoice.py key "sub_total"
+    cgst = db.Column(db.Float, default=0.0)         # always 0 per spec
+    sgst = db.Column(db.Float, default=0.0)         # always 0 per spec
+    grand_total = db.Column(db.Float, default=0.0)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    items = relationship("InvoiceItem", backref="invoice", cascade="all, delete-orphan")
+    items = db.relationship("InvoiceItem", backref="invoice", cascade="all, delete-orphan")
 
 
 class InvoiceItem(db.Model):
     __tablename__ = "invoice_item"
+
     id = db.Column(db.Integer, primary_key=True)
     invoice_id = db.Column(db.Integer, db.ForeignKey("invoice.id"), index=True, nullable=False)
     description = db.Column(db.String(255), nullable=False)
@@ -228,8 +289,13 @@ class InvoiceItem(db.Model):
     qty = db.Column(db.Float, nullable=False, default=0.0)
     amount = db.Column(db.Float, nullable=False, default=0.0)
 
+
+# ---------------------------
+# Residual / Company financing
+# ---------------------------
 class ResidualEarning(db.Model):
     __tablename__ = "residual_earning"
+
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, index=True)
     warehouse = db.Column(db.String(150), nullable=False)
@@ -241,6 +307,8 @@ class ResidualEarning(db.Model):
 
 
 class CompanyLoan(db.Model):
+    __tablename__ = "company_loan"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
     loan_amount = db.Column(db.Float, nullable=False)
@@ -250,30 +318,35 @@ class CompanyLoan(db.Model):
     total_disbursement = db.Column(db.Float, nullable=False)
     interest_rate = db.Column(db.Float, nullable=False)
 
+
 class LoanRepayment(db.Model):
+    __tablename__ = "loan_repayment"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
     amount = db.Column(db.Float, nullable=False)
     interest_rate = db.Column(db.Float, nullable=False)
-    
+
+
 class Expenditure(db.Model):
+    __tablename__ = "expenditure"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
-    expenditure_type = db.Column(db.String(50), nullable=False)  # e.g., Maintenance Charges, Salary Payment, Others
+    expenditure_type = db.Column(db.String(50), nullable=False)  # Maintenance, Salary, Others
     amount = db.Column(db.Float, nullable=False)
-    comments = db.Column(db.String(255))  # Only required if type is 'Others'
+    comments = db.Column(db.String(255))  # required if type is 'Others'
 
+
+# ---------------------------
+# Assistant chat models
+# ---------------------------
 class ChatSession(db.Model):
     __tablename__ = "chat_session"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
-    # NOTE: allow NULL for public (guest) chats
-    user_mobile = db.Column(db.String(20), index=True, nullable=True)
-
-    # NEW: for homepage guests
+    user_mobile = db.Column(db.String(20), index=True, nullable=True)  # allow NULL for guests
     visitor_id = db.Column(db.String(64), index=True, nullable=True)
-
-    # NEW: distinguish scopes
     scope = db.Column(db.String(20), default="public", nullable=True)  # "public" or "account"
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -282,8 +355,10 @@ class ChatSession(db.Model):
     escalated = db.Column(db.Boolean, default=False)
     assigned_agent = db.Column(db.String(50), nullable=True)
 
+
 class ChatMessage(db.Model):
     __tablename__ = "chat_message"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     session_id = db.Column(db.Integer, db.ForeignKey("chat_session.id"), index=True, nullable=False)
     sender_type = db.Column(db.String(10), nullable=False)  # user, bot, agent, system
@@ -293,4 +368,3 @@ class ChatMessage(db.Model):
     is_private = db.Column(db.Boolean, default=False)
 
     session = db.relationship("ChatSession", backref=db.backref("messages", lazy="dynamic"))
-
