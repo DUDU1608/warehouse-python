@@ -200,6 +200,34 @@ class BuyerPayment(db.Model):
     reference = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Invoice(db.Model):
+    __tablename__ = "invoice"
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_no = db.Column(db.Integer, nullable=False, unique=True, index=True)
+    date = db.Column(db.Date, nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+    customer_name = db.Column(db.String(150), nullable=False)
+    address = db.Column(db.String(255))
+    vehicle_no = db.Column(db.String(50))
+    driver_no = db.Column(db.String(50))
+    subtotal = db.Column(db.Float, default=0)
+    cgst = db.Column(db.Float, default=0)  # always 0 per spec
+    sgst = db.Column(db.Float, default=0)  # always 0 per spec
+    grand_total = db.Column(db.Float, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    items = relationship("InvoiceItem", backref="invoice", cascade="all, delete-orphan")
+
+
+class InvoiceItem(db.Model):
+    __tablename__ = "invoice_item"
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoice.id"), index=True, nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    price = db.Column(db.Float, nullable=False, default=0.0)
+    qty = db.Column(db.Float, nullable=False, default=0.0)
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+
 class ResidualEarning(db.Model):
     __tablename__ = "residual_earning"
     id = db.Column(db.Integer, primary_key=True)
