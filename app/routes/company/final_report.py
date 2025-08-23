@@ -10,7 +10,8 @@ from app.models import (
     StockExit,
     LoanData,
     MarginData,
-    StockistLoanRepayment,   # ✅ include repayments
+    StockistLoanRepayment,  # used in interest calc
+    StockistPayment,        # ✅ NEW: to compute Payment Made
 )
 
 bp = Blueprint("final_report", __name__, url_prefix="/company")
@@ -49,15 +50,14 @@ def _sum_scalar(query):
     return float(val or 0.0)
 
 
-# --- daily accrual interest; now subtracts loan repayments too ---
+# --- daily accrual interest; subtracts loan repayments and margins ---
 def _compute_interest(stockist: str, upto_date: date, commodity: str | None, warehouse: str | None) -> float:
     """
     Daily simple interest @13.75% p.a. on:
-        outstanding = (cash loan + margin loan) - (margin paid) - (loan repayments)
-    Outstanding is accumulated from transactions up to 'upto_date'.
-    Interest is summed daily between transaction dates (inclusive of end day).
+      outstanding = (cash loan + margin loan) - (margin paid) - (loan repayments)
+    Accrues from transaction dates (inclusive of end day).
     """
-    # Loans (both cash + margin) add to outstanding
+    # Loans add to outstanding
     loans_q = db.session.query(LoanData.date, LoanData.amount, LoanData.loan_type).filter(
         func.upper(LoanData.stockist_name) == func.upper(stockist),
         LoanData.date <= upto_date,
@@ -68,7 +68,7 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
         loans_q = loans_q.filter(LoanData.warehouse == warehouse)
     loans = loans_q.order_by(LoanData.date.asc()).all()
 
-    # Margin paid reduces outstanding
+    # Margin payments reduce outstanding
     margins_q = db.session.query(MarginData.date, MarginData.amount).filter(
         func.upper(MarginData.stockist_name) == func.upper(stockist),
         MarginData.date <= upto_date,
@@ -79,7 +79,7 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
         margins_q = margins_q.filter(MarginData.warehouse == warehouse)
     margins = margins_q.order_by(MarginData.date.asc()).all()
 
-    # NEW: Loan repayments reduce outstanding
+    # Loan repayments reduce outstanding
     repays_q = db.session.query(StockistLoanRepayment.date, StockistLoanRepayment.amount).filter(
         func.upper(StockistLoanRepayment.stockist_name) == func.upper(stockist),
         StockistLoanRepayment.date <= upto_date,
@@ -101,7 +101,6 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
         if dt and amt:
             delta_by_date[dt] -= float(amt)
 
-    # ✅ subtract repayments
     for dt, amt in repayments:
         if dt and amt:
             delta_by_date[dt] -= float(amt)
@@ -128,10 +127,10 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
         # apply all deltas on the event day
         outstanding += delta_by_date[d]
         if outstanding < 0:
-            outstanding = 0.0  # don't carry negative principal
+            outstanding = 0.0
         current_date = d
 
-    # accrue from last event day THROUGH upto_date (inclusive)
+    # accrue from last event THROUGH upto_date (inclusive)
     if current_date <= upto_date and outstanding > 0:
         days = (upto_date - current_date).days + 1
         if days > 0:
@@ -160,7 +159,7 @@ def _accrue_piecewise(changes_by_date: dict, as_of: date, per_unit_per_day: floa
     total = 0.0
     for i in range(len(keys) - 1):
         d = keys[i]
-        running = max(0.0, running + changes.get(d, 0.0))  # never accrue negative stock
+        running = max(0.0, running + changes.get(d, 0.0))
         nxt = keys[i + 1]
         if nxt <= d:
             continue
@@ -204,17 +203,16 @@ def _rental_for_combination(
         in_q = in_q.filter(func.upper(StockData.quality) == quality_u)
         out_q = out_q.filter(func.upper(StockExit.quality) == quality_u)
 
-    # Flat rule for the exception stockist
+    # Flat rule for exception stockist
     if stockist_u == EXCEPTION_STOCKIST.upper():
         total_in = (in_q.with_entities(func.coalesce(func.sum(StockData.quantity), 0.0)).scalar() or 0.0)
-        # prefer net_qty for exits if present, else quantity
         total_out = (out_q.with_entities(func.coalesce(func.sum(StockExit.net_qty), 0.0)).scalar() or 0.0)
         if total_out <= 0:
             total_out = (out_q.with_entities(func.coalesce(func.sum(StockExit.quantity), 0.0)).scalar() or 0.0)
         net_kg = max(0.0, float(total_in) - float(total_out))
         return (net_kg / KG_PER_TON) * FLAT_YEARLY_PER_TON
 
-    # Build daily changes in MT (no rst_no needed)
+    # Build daily changes in MT
     changes = {}
     for s in in_q.all():
         qty_mt = float(s.quantity or 0.0) / KG_PER_TON
@@ -222,7 +220,6 @@ def _rental_for_combination(
             changes[s.date] = changes.get(s.date, 0.0) + qty_mt
 
     for ex in out_q.all():
-        # prefer net_qty if available
         qkg = float(ex.net_qty if getattr(ex, "net_qty", None) is not None else (ex.quantity or 0.0))
         qty_mt = qkg / KG_PER_TON
         if qty_mt:
@@ -238,6 +235,7 @@ def final_report():
       - Accepts 'bd_qty' (quantity in KG to be valued at rate_bd),
         'rate_good' (₹/kg), 'rate_bd' (₹/kg).
       - Remaining (net_qty - bd_qty) is valued at rate_good.
+    Also adds "Payment Made" from StockistPayment and shows "Payment Due".
     """
     warehouses, commodities, stockists = _get_dropdowns()
 
@@ -332,7 +330,7 @@ def final_report():
             quality=quality or None,
         )
 
-        # --- 7) Interest (now subtracts repayments as well) ---
+        # --- 7) Interest (subtracts repayments & margins) ---
         interest = _compute_interest(
             stockist=stockist,
             upto_date=upto_date,
@@ -372,9 +370,21 @@ def final_report():
             margin_paid_q = margin_paid_q.filter(MarginData.warehouse == warehouse)
         margin_paid = _sum_scalar(margin_paid_q)
 
-        # NOTE: Net payable formula remains unchanged; if you also want repayments
-        # to reduce the principal used here, we can switch to "net outstanding" later.
+        # --- 11) Net Payable (before payments made) ---
         net_payable = total_cost - rental - interest - cash_loan - margin_loan + margin_paid
+
+        # --- 12) Payment Made (sum from StockistPayment up to date) ---
+        pay_q = db.session.query(func.coalesce(func.sum(StockistPayment.amount), 0.0)) \
+            .filter(func.upper(StockistPayment.stockist_name) == func.upper(stockist),
+                    StockistPayment.date <= upto_date)
+        if commodity:
+            pay_q = pay_q.filter(StockistPayment.commodity == commodity)
+        if warehouse:
+            pay_q = pay_q.filter(StockistPayment.warehouse == warehouse)
+        payment_made = _sum_scalar(pay_q)
+
+        # --- 13) Payment Due ---
+        payment_due = net_payable - payment_made
 
         ctx["result"] = {
             # quantities
@@ -396,8 +406,10 @@ def final_report():
             "cash_loan": round(cash_loan, 2),
             "margin_loan": round(margin_loan, 2),
             "margin_paid": round(margin_paid, 2),
-            # final
+            # net + payments
             "net_payable": round(net_payable, 2),
+            "payment_made": round(payment_made, 2),   # ✅ new
+            "payment_due": round(payment_due, 2),     # ✅ new
         }
 
     return render_template("company/final_report.html", **ctx)
