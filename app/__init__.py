@@ -219,6 +219,7 @@ def create_app() -> Flask:
             final_report,
             company_loan_due,
             residual_earning,
+            invoice
         )
         app.register_blueprint(company_dashboard.bp)
         app.register_blueprint(companyloan.bp)
@@ -232,6 +233,7 @@ def create_app() -> Flask:
         app.register_blueprint(final_report.bp)
         app.register_blueprint(company_loan_due.bp)
         app.register_blueprint(residual_earning.bp)
+        app.register_blueprint(invoice.bp)
     except Exception as e:
         app.logger.debug("Company blueprints not fully registered: %s", e)
 
