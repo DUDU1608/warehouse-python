@@ -143,6 +143,18 @@ class StockistPayment(db.Model):
     bank_reference = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class StockistLoanRepayment(db.Model):
+    __tablename__ = "stockist_loan_repayment"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False, default=date.today)
+    stockist_name = db.Column(db.String(100), nullable=False, index=True)
+    mobile = db.Column(db.String(20), nullable=True, index=True)
+    warehouse = db.Column(db.String(100), nullable=True)
+    commodity = db.Column(db.String(30), nullable=True)
+    amount = db.Column(db.Float, nullable=False)
+    bank_reference = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
 
 class Buyer(db.Model):
     __tablename__ = "buyer"
