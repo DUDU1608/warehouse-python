@@ -130,6 +130,20 @@ class MarginData(db.Model):
     commodity = db.Column(db.String(20), nullable=False)
     amount = db.Column(db.Float, nullable=False)
 
+class StockistPayment(db.Model):
+    __tablename__ = "stockist_payment"
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True, default=date.today)
+    stockist_id = db.Column(db.Integer, db.ForeignKey("stockist.id"), nullable=True, index=True)
+    stockist_name = db.Column(db.String(100), nullable=False)
+    mobile = db.Column(db.String(20))
+    warehouse = db.Column(db.String(150))
+    commodity = db.Column(db.String(50))
+    amount = db.Column(db.Float, nullable=False)
+    bank_reference = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class Buyer(db.Model):
     __tablename__ = "buyer"
     id = db.Column(db.Integer, primary_key=True)
