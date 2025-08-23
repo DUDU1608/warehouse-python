@@ -5,6 +5,15 @@ from io import BytesIO
 from datetime import datetime, date
 from typing import Dict, Any
 
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+
 from flask import (
     Blueprint, render_template, request, redirect,
     url_for, flash, send_file
@@ -108,8 +117,6 @@ def create_invoice():
     sgst = 0.0   # per your spec
     grand_total = round(subtotal + cgst + sgst, 2)
 
-    # Build kwargs compatibly with whatever your Invoice model has
-    # (buyer_id vs customer_id, sub_total vs subtotal)
     inv_kwargs: Dict[str, Any] = dict(
         invoice_no=_next_invoice_no(),
         date=inv_date,
@@ -152,91 +159,126 @@ def list_invoices():
 
 @bp.get("/<int:invoice_id>/pdf")
 def pdf(invoice_id: int):
-    """Generate the PDF with ReportLab if available. Fallback to printable HTML."""
+    """
+    Generate a professional PDF using ReportLab/Platypus with a proper
+    header (company details), invoice meta box, items table, and totals.
+    Falls back to HTML if reportlab is missing.
+    """
     inv: Invoice | None = Invoice.query.get(invoice_id)
     if not inv:
         flash("Invoice not found.", "danger")
         return redirect(url_for("invoice.new_invoice"))
 
-    # Try importing reportlab here so blueprint registers even if it's missing.
+    # Try importing reportlab – fallback to printable HTML if unavailable
     try:
-        from reportlab.lib.pagesizes import A4
         from reportlab.lib import colors
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
         from reportlab.platypus import Table, TableStyle
     except Exception:
-        # Fallback to a printable HTML view
-        flash("PDF engine (ReportLab) not available on server. Showing printable HTML.", "warning")
         items = InvoiceItem.query.filter_by(invoice_id=inv.id).all()
+        flash("PDF engine (ReportLab) not available on server. Showing printable HTML.", "warning")
         return render_template("company/invoice_pdf_fallback.html", inv=inv, items=items)
 
-    # --- Build PDF ---
+    # ---------- Build PDF with Platypus (auto-layout, no overlap) ----------
     buf = BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
-    width, height = A4
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=18*mm, rightMargin=18*mm,
+        topMargin=16*mm, bottomMargin=16*mm,
+        title=f"Invoice #{inv.invoice_no}"
+    )
 
-    # Header band
-    band_h = 25 * mm
-    c.setFillColorRGB(0.95, 0.45, 0.0)  # orange
-    c.rect(20*mm, height - 30*mm, width - 40*mm, band_h, stroke=0, fill=1)
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(width/2, height - 22*mm, CO_NAME)
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="H1White", parent=styles["Heading1"], alignment=TA_CENTER, textColor=colors.white, fontSize=16, spaceAfter=4))
+    styles.add(ParagraphStyle(name="MetaKey", parent=styles["Normal"], fontName="Helvetica-Bold"))
+    styles.add(ParagraphStyle(name="RightBold", parent=styles["Normal"], alignment=TA_RIGHT, fontName="Helvetica-Bold"))
+    styles.add(ParagraphStyle(name="Small", parent=styles["Normal"], fontSize=9))
+    styles.add(ParagraphStyle(name="Tiny", parent=styles["Normal"], fontSize=8, textColor=colors.grey))
 
-    # Company info
-    y = height - 35*mm
-    c.setFillColor(colors.black)
-    c.setFont("Helvetica", 10)
-    c.drawString(22*mm, y, CO_ADDR); y -= 5*mm
-    c.drawString(22*mm, y, f"Mobile: {CO_MOBILE}"); y -= 5*mm
-    c.drawString(22*mm, y, f"Email: {CO_EMAIL}"); y -= 5*mm
-    c.drawString(22*mm, y, f"Website: {CO_WEBSITE}"); y -= 5*mm
-    c.drawString(22*mm, y, f"GSTIN: {CO_GSTIN}")
+    els = []
 
-    # Invoice meta box
-    meta_data = [
-        ["CUSTOMER NAME", inv.customer_name, "INVOICE", f"No: {inv.invoice_no}"],
-        ["INVOICE DATE", inv.date.strftime("%d-%m-%Y"), "Driver No", getattr(inv, "driver_no", "") or ""],
-        ["Vehicle No", getattr(inv, "vehicle_no", "") or "", "Address", getattr(inv, "address", "") or ""],
+    # -- Header band with company name
+    header_band = Table([[Paragraph(CO_NAME, styles["H1White"])]], colWidths=[doc.width])
+    header_band.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#E67E22")),  # orange
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 10),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 10),
+    ]))
+    els += [header_band]
+
+    # -- Company info block in header (address, mobile, email, website, GSTIN)
+    co_info = [
+        [Paragraph("<b>Address</b>", styles["Small"]), Paragraph(CO_ADDR, styles["Small"])],
+        [Paragraph("<b>Mobile</b>", styles["Small"]), Paragraph(CO_MOBILE, styles["Small"])],
+        [Paragraph("<b>Email</b>", styles["Small"]), Paragraph(CO_EMAIL, styles["Small"])],
+        [Paragraph("<b>Website</b>", styles["Small"]), Paragraph(CO_WEBSITE, styles["Small"])],
+        [Paragraph("<b>GSTIN</b>", styles["Small"]), Paragraph(CO_GSTIN, styles["Small"])],
     ]
-    t = Table(meta_data, colWidths=[30*mm, 65*mm, 30*mm, 65*mm])
-    t.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.75, colors.black),
-        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.black),
+    co_table = Table(co_info, colWidths=[28*mm, doc.width - 28*mm])
+    co_table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+        ("BOX", (0,0), (-1,-1), 0.25, colors.lightgrey),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.lightgrey),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ]))
+    els += [Spacer(1, 6), co_table, Spacer(1, 10)]
+
+    # -- Invoice meta (customer + invoice info)
+    meta_data = [
+        ["CUSTOMER NAME", inv.customer_name, "INVOICE NO.", str(inv.invoice_no)],
+        ["INVOICE DATE", inv.date.strftime("%d-%m-%Y"), "DRIVER NO", (getattr(inv, "driver_no", "") or "")],
+        ["VEHICLE NO", (getattr(inv, "vehicle_no", "") or ""), "ADDRESS", (getattr(inv, "address", "") or "")],
+    ]
+    meta = Table(meta_data, colWidths=[30*mm, (doc.width/2 - 30*mm), 30*mm, (doc.width/2 - 30*mm)])
+    meta.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.6, colors.black),
+        ("INNERGRID", (0,0), (-1,-1), 0.4, colors.black),
         ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
         ("BACKGROUND", (2,0), (2,-1), colors.whitesmoke),
         ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
     ]))
-    t.wrapOn(c, width-40*mm, 0)
-    t.drawOn(c, 20*mm, height - 90*mm)
+    els += [meta, Spacer(1, 10)]
 
-    # Items table
+    # -- Items table
     items = InvoiceItem.query.filter_by(invoice_id=inv.id).all()
-    data = [["SL NO", "DESCRIPTIONS OF GOODS", "PRICE", "QTY (Quintal)", "AMOUNT"]]
+    data = [["SL NO", "DESCRIPTION OF GOODS", "PRICE", "QTY (Quintal)", "AMOUNT"]]
     for idx, it in enumerate(items, start=1):
         data.append([
             str(idx),
-            it.description,
-            f"{it.price:.2f}",
-            f"{it.qty:g}",
-            f"{it.amount:.2f}",
+            Paragraph(it.description or "", styles["Small"]),
+            f"{(it.price or 0):.2f}",
+            f"{(it.qty or 0):g}",
+            f"{(it.amount or 0):.2f}",
         ])
 
-    tbl = Table(data, colWidths=[15*mm, 85*mm, 25*mm, 30*mm, 30*mm])
+    col_widths = [15*mm, doc.width - (15*mm + 25*mm + 30*mm + 30*mm), 25*mm, 30*mm, 30*mm]
+    tbl = Table(data, colWidths=col_widths, repeatRows=1)
     tbl.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("ALIGN", (2,1), (4,-1), "RIGHT"),
         ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
     ]))
-    tbl.wrapOn(c, width-40*mm, 0)
-    tbl_y = height - 180*mm
-    tbl.drawOn(c, 20*mm, tbl_y)
+    els += [tbl, Spacer(1, 8)]
 
-    # Totals box
-    # Support sub_total or subtotal attribute names
+    # -- Totals (right-aligned small box)
     if hasattr(inv, "sub_total"):
         s_total = float(inv.sub_total or 0.0)
     else:
@@ -247,25 +289,44 @@ def pdf(invoice_id: int):
     g_total = float(getattr(inv, "grand_total", 0.0) or 0.0)
 
     totals = [
-        ["G. TOTAL", f"{g_total:.2f}"],
-        ["C. GST - %", f"{cgst:.2f}"],
-        ["S. GST - %", f"{sgst:.2f}"],
-        ["S. TOTAL", f"{s_total:.2f}"],
+        ["Subtotal", f"{s_total:.2f}"],
+        ["CGST",     f"{cgst:.2f}"],
+        ["SGST",     f"{sgst:.2f}"],
+        ["Grand Total", f"{g_total:.2f}"],
     ]
-    t2 = Table(totals, colWidths=[40*mm, 30*mm])
+    t2 = Table(totals, colWidths=[40*mm, 35*mm], hAlign="RIGHT")
     t2.setStyle(TableStyle([
         ("GRID", (0,0), (-1,-1), 0.5, colors.black),
         ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
-        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
-        ("FONTNAME", (0,3), (-1,3), "Helvetica-Bold"),
+        ("FONTNAME", (0,0), (-1,-2), "Helvetica"),
+        ("FONTNAME", (0,-1), (-1,-1), "Helvetica-Bold"),
         ("ALIGN", (1,0), (1,-1), "RIGHT"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
     ]))
-    t2.wrapOn(c, 0, 0)
-    t2.drawOn(c, width - 20*mm - 70*mm, 40*mm)
+    els += [t2, Spacer(1, 12)]
 
-    c.showPage()
-    c.save()
+    # -- Footer / signature
+    els += [
+        HRFlowable(width="100%", thickness=0.6, color=colors.lightgrey),
+        Spacer(1, 6),
+        Paragraph("Thank you for your business!", styles["Tiny"]),
+        Spacer(1, 10),
+        Table(
+            [
+                ["", f"For {CO_NAME}"],
+                ["", ""],
+                ["", "(Authorised Signatory)"]
+            ],
+            colWidths=[doc.width - 60*mm, 60*mm]
+        )
+    ]
+
+    doc.build(els)
     buf.seek(0)
 
     filename = f"invoice_{inv.invoice_no}.pdf"
     return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=filename)
+
