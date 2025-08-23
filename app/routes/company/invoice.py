@@ -49,6 +49,16 @@ def _build_invoice_pdf(
     taxes: dict | None = None,
     footer_note: str | None = "Thank you for your business!",
 ):
+    """
+    Presentation-only change:
+    - Company details (Address, Mobile, Email, GSTIN, Website) are shown inside
+      the COLORED HEADER (orange) below the company name, with proper wrapping.
+
+    To move these details to a colored footer instead, set DETAILS_AT = "footer".
+    """
+    # Toggle: "header" or "footer"
+    DETAILS_AT = "header"
+
     page_w, page_h = A4
     margins = dict(left=14 * mm, right=14 * mm, top=16 * mm, bottom=16 * mm)
 
@@ -70,42 +80,61 @@ def _build_invoice_pdf(
     styles.add(ParagraphStyle(name="FooterWhite", fontSize=9, alignment=TA_CENTER, textColor=colors.white))
 
     brand_orange = colors.HexColor("#E67E22")
+    content_w = page_w - margins["left"] - margins["right"]
 
     story = []
 
-    # Header band
-    title_tbl = Table([[Paragraph(f"<b>{company['name']}</b>", styles["H1White"])]],
-                      colWidths=[page_w - margins["left"] - margins["right"]])
-    title_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), brand_orange),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ("TOPPADDING", (0, 0), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-    ]))
-    story.append(title_tbl)
+    # =========================
+    # HEADER (colored)
+    # =========================
+    if DETAILS_AT == "header":
+        # Row 1: Company name
+        row1 = [Paragraph(f"<b>{company.get('name','')}</b>", styles["H1White"])]
 
-    # Company info (wrapped; prevents overlap)
-    comp_rows = [
-        [Paragraph(f"<b>Address:</b> {company.get('address','')}", styles["Small"])],
-        [Paragraph(f"<b>Mobile:</b> {company.get('mobile','')}", styles["Small"])],
-        [Paragraph(f"<b>Email:</b> {company.get('email','')}", styles["Small"])],
-        [Paragraph(f"<b>Website:</b> {company.get('website','')}", styles["Small"])],
-        [Paragraph(f"<b>GSTIN:</b> {company.get('gstin','')}", styles["Small"])],
-    ]
-    comp_tbl = Table(comp_rows, colWidths=[page_w - margins["left"] - margins["right"]])
-    comp_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
-        ("BOX", (0, 0), (-1, -1), 0.6, colors.black),
-        ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.black),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story += [comp_tbl, _sp(8)]
+        # Row 2: Company details in white (wrapped)
+        det_html = (
+            f"<font size=9>"
+            f"<b>Address:</b> {company.get('address','')}&nbsp;&nbsp; "
+            f"<b>Mobile:</b> {company.get('mobile','')}&nbsp;&nbsp; "
+            f"<b>Email:</b> {company.get('email','')}&nbsp;&nbsp; "
+            f"<b>GSTIN:</b> {company.get('gstin','')}&nbsp;&nbsp; "
+            f"<b>Website:</b> {company.get('website','')}"
+            f"</font>"
+        )
+        row2 = [Paragraph(det_html, ParagraphStyle(
+            name="HeaderDetailsWhite", fontSize=9, leading=11,
+            textColor=colors.white, alignment=TA_CENTER
+        ))]
 
-    # Customer + invoice meta
+        header_tbl = Table([row1, row2], colWidths=[content_w])
+        header_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), brand_orange),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, 0), 10),   # name row
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+            ("TOPPADDING", (0, 1), (-1, 1), 4),    # details row
+            ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+        ]))
+        story.append(header_tbl)
+        story.append(_sp(8))
+    else:
+        # Minimal header with just name
+        title_tbl = Table([[Paragraph(f"<b>{company.get('name','')}</b>", styles["H1White"])]],
+                          colWidths=[content_w])
+        title_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), brand_orange),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ]))
+        story.append(title_tbl)
+        story.append(_sp(8))
+
+    # =========================
+    # CUSTOMER + INVOICE META
+    # =========================
     meta_tbl = Table([
         [Paragraph("<b>Customer Name</b>", styles["CellKey"]),
          Paragraph(bill_to.get("name",""), styles["Small"]),
@@ -130,7 +159,9 @@ def _build_invoice_pdf(
     ]))
     story += [meta_tbl, _sp(8)]
 
-    # Items
+    # =========================
+    # ITEMS
+    # =========================
     head = [
         Paragraph("<b>SL NO</b>", styles["Small"]),
         Paragraph("<b>DESCRIPTION OF GOODS</b>", styles["Small"]),
@@ -170,7 +201,9 @@ def _build_invoice_pdf(
     ]))
     story += [items_tbl, _sp(8)]
 
-    # Totals
+    # =========================
+    # TOTALS / TAXES
+    # =========================
     rows = [["Subtotal", _money(subtotal)]]
     cgst = sgst = igst = Decimal("0.00")
     if taxes:
@@ -191,7 +224,7 @@ def _build_invoice_pdf(
     grand_total = subtotal + cgst + sgst + igst
     rows.append(["Grand Total", _money(grand_total)])
 
-    totals_tbl = Table(rows, colWidths=[page_w - margins["left"] - margins["right"] - 50*mm, 50*mm])
+    totals_tbl = Table(rows, colWidths=[content_w - 50*mm, 50*mm])
     totals_tbl.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
         ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
@@ -203,27 +236,52 @@ def _build_invoice_pdf(
     ]))
     story += [totals_tbl, _sp(10)]
 
-    # Declaration + sign
+    # =========================
+    # DECLARATION + SIGN
+    # =========================
     story += [
         KeepTogether([
             Paragraph("Certified that the particulars given above are true and correct.", styles["Small"]),
             _sp(6),
-            Paragraph(f"For <b>{company['name']}</b>", styles["Right9"]),
+            Paragraph(f"For <b>{company.get('name','')}</b>", styles["Right9"]),
             _sp(18),
             Paragraph("<b>Authorised Signatory</b>", styles["Right9"]),
         ])
     ]
 
-    # Footer band
-    if footer_note:
-        ft = Table([[Paragraph(footer_note, styles["FooterWhite"])]],
-                   colWidths=[page_w - margins["left"] - margins["right"]])
+    # =========================
+    # FOOTER (colored) — only if DETAILS_AT == "footer"
+    # =========================
+    if DETAILS_AT == "footer":
+        contact_html = (
+            f"<b>{company.get('name','')}</b> &nbsp; | &nbsp; "
+            f"<b>Address:</b> {company.get('address','')} &nbsp; | &nbsp; "
+            f"<b>Mobile:</b> {company.get('mobile','')} &nbsp; | &nbsp; "
+            f"<b>Email:</b> {company.get('email','')} &nbsp; | &nbsp; "
+            f"<b>GSTIN:</b> {company.get('gstin','')} &nbsp; | &nbsp; "
+            f"<b>Website:</b> {company.get('website','')}"
+        )
+        ft = Table([[Paragraph(contact_html, styles["FooterWhite"])]],
+                   colWidths=[content_w])
         ft.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), brand_orange),
             ("TOPPADDING", (0, 0), (-1, -1), 6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
         ]))
+        story.append(_sp(6))
         story.append(ft)
+    else:
+        if footer_note:
+            ft = Table([[Paragraph(footer_note, styles["FooterWhite"])]],
+                       colWidths=[content_w])
+            ft.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), brand_orange),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(ft)
 
     doc.build(story)
 
@@ -310,38 +368,6 @@ def create_invoice():
         f.write(buf.getvalue())
 
     return redirect(url_for("invoice.view_pdf", invoice_id=number))
-
-# --- minimal list endpoint so url_for('invoice.list_invoices') works ---
-@bp.get("/", endpoint="list_invoices")
-def list_invoices():
-    """
-    Lists PDFs from instance/invoices and renders templates/company/invoice_list.html
-    """
-    import os
-    from flask import current_app, render_template
-
-    out_dir = os.path.join(current_app.instance_path, "invoices")
-    os.makedirs(out_dir, exist_ok=True)
-
-    files = sorted(
-        [f for f in os.listdir(out_dir) if f.lower().endswith(".pdf")],
-        key=lambda x: os.path.getmtime(os.path.join(out_dir, x)),
-        reverse=True,
-    )
-
-    # Pass filenames to your existing template
-    items = []
-    for f in files:
-        invoice_id = None
-        stem = f.rsplit(".", 1)[0]
-        if "_" in stem:
-            tail = stem.split("_", 1)[1]
-            if tail.isdigit():
-                invoice_id = int(tail)
-        items.append({"file": f, "invoice_id": invoice_id})
-
-    return render_template("company/invoice_list.html", items=items)
-
 
 
 @bp.get("/<int:invoice_id>/pdf")
