@@ -99,63 +99,73 @@
     </form>
   </div>
 
-  {% if result %}
-  <div class="card p-3">
-    <div class="table-responsive">
-      <table class="table table-bordered align-middle mb-0">
-        <thead>
-          <tr>
-            <th>Total Qty (kg)</th>
-            <th>Reduction (kg)</th>
-            <th>Net Qty (kg)</th>
-            <th>BD Qty (kg)</th>
-            <th>Good Qty (kg)</th>
-            <th>Rate (BD)</th>
-            <th>Rate (Good)</th>
-            <th>Cost (BD)</th>
-            <th>Cost (Good)</th>
-            <th>Total Cost</th>
-            <th>Rental</th>
-            <th>Interest</th>
-            <th>Cash Loan</th>
-            <th>Margin Loan</th>
-            <th>Margin Paid</th>
-            <th class="text-success">Net Payable</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{ result.total_qty }}</td>
-            <td>{{ result.reduction }}</td>
-            <td>{{ result.net_qty }}</td>
-            <td>{{ result.bd_qty }}</td>
-            <td>{{ result.good_qty }}</td>
-            <td>₹{{ '%.2f'|format(result.rate_bd) }}</td>
-            <td>₹{{ '%.2f'|format(result.rate_good) }}</td>
-            <td>₹{{ '%.2f'|format(result.cost_bd) }}</td>
-            <td>₹{{ '%.2f'|format(result.cost_good) }}</td>
-            <td class="fw-semibold">₹{{ '%.2f'|format(result.total_cost) }}</td>
-            <td>₹{{ '%.2f'|format(result.rental) }}</td>
-            <td>₹{{ '%.2f'|format(result.interest) }}</td>
-            <td>₹{{ '%.2f'|format(result.cash_loan) }}</td>
-            <td>₹{{ '%.2f'|format(result.margin_loan) }}</td>
-            <td>₹{{ '%.2f'|format(result.margin_paid) }}</td>
-            <td class="fw-bold text-success">₹{{ '%.2f'|format(result.net_payable) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="mt-3 muted small">
-      <ul class="mb-0">
-        <li><strong>Split pricing:</strong> BD Quantity is valued at <em>Rate (BD)</em>; remaining Net Qty is valued at <em>Rate (Good)</em>.</li>
-        <li><strong>Reduction:</strong> 1.5% of Total Quantity applied only for Maize.</li>
-        <li><strong>Rental:</strong> ₹3.334 per ton per day (or flat where applicable), computed up to selected date.</li>
-        <li><strong>Interest:</strong> Simple daily interest @13.75% p.a. on net outstanding as of selected date.</li>
-      </ul>
-    </div>
+ {% if result %}
+<div class="card p-3">
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Total Quantity (kg)</th>
+          <th>Reduction (kg)</th>
+          <th>Net Quantity (kg)</th>
+          <th>BD Qty (kg)</th>
+          <th>Good Qty (kg)</th>
+          <th>Rate Good (₹/kg)</th>
+          <th>Rate BD (₹/kg)</th>
+          <th>Cost Good (₹)</th>
+          <th>Cost BD (₹)</th>
+          <th>Total Cost (₹)</th>
+          <th>Rental (₹)</th>
+          <th>Interest (₹)</th>
+          <th>Cash Loan (₹)</th>
+          <th>Margin Loan (₹)</th>
+          <th>Margin Paid (₹)</th>
+          <th>Net Payable (₹)</th>
+          <th>Payment Made (₹)</th> <!-- ✅ NEW -->
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ result.total_qty }}</td>
+          <td>{{ result.reduction }}</td>
+          <td>{{ result.net_qty }}</td>
+          <td>{{ result.bd_qty }}</td>
+          <td>{{ result.good_qty }}</td>
+          <td>{{ result.rate_good }}</td>
+          <td>{{ result.rate_bd }}</td>
+          <td>{{ result.cost_good }}</td>
+          <td>{{ result.cost_bd }}</td>
+          <td>{{ result.total_cost }}</td>
+          <td>{{ result.rental }}</td>
+          <td>{{ result.interest }}</td>
+          <td>{{ result.cash_loan }}</td>
+          <td>{{ result.margin_loan }}</td>
+          <td>{{ result.margin_paid }}</td>
+          <td class="fw-bold text-success">{{ result.net_payable }}</td>
+          <td class="fw-bold">{{ result.payment_made }}</td> <!-- ✅ NEW -->
+        </tr>
+      </tbody>
+    </table>
   </div>
-  {% endif %}
+
+  <!-- ✅ NEW: Payment Due -->
+  <div class="mt-3">
+    <h5 class="mb-0">
+      Payment Due: <span class="fw-bold text-danger">₹{{ "{:,.2f}".format(result.payment_due) }}</span>
+    </h5>
+  </div>
+
+  <div class="mt-2 text-muted small">
+    <ul class="mb-0">
+      <li>Reduction is computed as 1.5% of Total Quantity on Maize.</li>
+      <li>Rent is calculated at ₹3.334/ton/day till the selected date.</li>
+      <li>Interest is daily simple interest @13.75% p.a. on outstanding (loans − margins − repayments).</li>
+      <li>Payment Made sums StockistPayment up to the selected date (respecting filters).</li>
+    </ul>
+  </div>
+</div>
+{% endif %}
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
