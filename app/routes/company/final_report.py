@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from flask import Blueprint, render_template, request, flash
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from app import db
 from app.models import StockData, StockExit, LoanData, MarginData  # ensure these exist
@@ -24,6 +24,13 @@ def _parse_date(s: str) -> date | None:
         return None
 
 
+def _parse_float(s: str, default: float = 0.0) -> float:
+    try:
+        return float((s or "").strip() or default)
+    except Exception:
+        return default
+
+
 def _get_dropdowns():
     warehouses = [w[0] for w in db.session.query(StockData.warehouse).distinct().all() if w[0]]
     commodities = [c[0] for c in db.session.query(StockData.commodity).distinct().all() if c[0]]
@@ -36,7 +43,7 @@ def _sum_scalar(query):
     return float(val or 0.0)
 
 
-# --- replace the old _sum_interest(...) with this daily accrual version ---
+# --- daily accrual interest (unchanged; no quality filter applied here) ---
 def _compute_interest(stockist: str, upto_date: date, commodity: str | None, warehouse: str | None) -> float:
     """
     Daily simple interest @13.75% p.a. on:
@@ -44,7 +51,7 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
     Outstanding is accumulated from transactions up to 'upto_date'.
     Interest is summed daily between transaction dates (inclusive end).
     """
-    # Loans (both cash + margin) add to outstanding
+    # Loans add to outstanding
     loans_q = db.session.query(LoanData.date, LoanData.amount, LoanData.loan_type).filter(
         func.upper(LoanData.stockist_name) == func.upper(stockist),
         LoanData.date <= upto_date
@@ -66,68 +73,67 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
         margins_q = margins_q.filter(MarginData.warehouse == warehouse)
     margins = margins_q.order_by(MarginData.date.asc()).all()
 
-    # Build date -> delta map (sum multiple events on same day)
     from collections import defaultdict
     delta_by_date = defaultdict(float)
 
-    for dt, amt, loan_type in loans:
-        if dt is None or amt is None:
-            continue
-        # cash or margin loans both INCREASE outstanding
-        delta_by_date[dt] += float(amt or 0.0)
+    for dt, amt, _loan_type in loans:
+        if dt and amt:
+            delta_by_date[dt] += float(amt)
 
     for dt, amt in margins:
-        if dt is None or amt is None:
-            continue
-        # margin paid DECREASES outstanding
-        delta_by_date[dt] -= float(amt or 0.0)
+        if dt and amt:
+            delta_by_date[dt] -= float(amt)
 
     if not delta_by_date:
         return 0.0
 
-    # Iterate through dates in order, accruing interest between events
     dates = sorted(delta_by_date.keys())
     current_date = dates[0]
-    # If first event occurs after upto_date, no accrual
     if current_date > upto_date:
         return 0.0
 
     outstanding = 0.0
     interest_total = 0.0
 
-    # Process each event day
     for d in dates:
         if d > upto_date:
             break
-        # Accrue interest from current_date up to the day BEFORE 'd'
+        # accrue from current_date up to the day BEFORE 'd'
         if d > current_date:
-            days = (d - current_date).days  # exclusive of 'd'
+            days = (d - current_date).days
             if days > 0 and outstanding > 0:
                 interest_total += outstanding * DAILY_RATE * days
-        # Apply all deltas on day 'd'
+        # apply all deltas on the event day
         outstanding += delta_by_date[d]
         if outstanding < 0:
-            outstanding = 0.0  # do not allow negative outstanding for interest
+            outstanding = 0.0
         current_date = d
 
-    # Accrue from the last processed date THROUGH upto_date (inclusive)
+    # accrue from last event day THROUGH upto_date (inclusive)
     if current_date <= upto_date and outstanding > 0:
-        days = (upto_date - current_date).days + 1  # inclusive end date
+        days = (upto_date - current_date).days + 1
         if days > 0:
             interest_total += outstanding * DAILY_RATE * days
 
     return round(interest_total, 2)
 
 
-def _rental_for_combination(stockist: str, upto_date: date, commodity: str | None, warehouse: str | None) -> float:
+def _rental_for_combination(
+    stockist: str,
+    upto_date: date,
+    commodity: str | None,
+    warehouse: str | None,
+    quality: str | None,
+) -> float:
     """
-    Rental for entered combination up to entered date.
-    - ANUNAY AGRO: flat ₹800/ton on net stock (ins - outs) as of 'upto_date'
+    Rental up to 'upto_date'.
+    - EXCEPTION_STOCKIST: flat ₹800/ton on net stock (ins - outs) as of 'upto_date'
     - Others: ₹3.334/ton/day using per-entry days, subtracting exits per RST
+    Applies optional quality filter to both IN and OUT.
     """
     stockist_u = (stockist or "").strip().upper()
+    quality_u = (quality or "").strip().upper()
 
-    # Base filters for IN and OUT
     in_q = StockData.query.filter(
         func.upper(StockData.stockist_name) == func.upper(stockist),
         StockData.date <= upto_date
@@ -142,16 +148,17 @@ def _rental_for_combination(stockist: str, upto_date: date, commodity: str | Non
     if warehouse:
         in_q = in_q.filter(StockData.warehouse == warehouse)
         out_q = out_q.filter(StockExit.warehouse == warehouse)
+    if quality_u and quality_u != "ALL":
+        in_q = in_q.filter(func.upper(StockData.quality) == quality_u)
+        out_q = out_q.filter(func.upper(StockExit.quality) == quality_u)
 
     if stockist_u == EXCEPTION_STOCKIST.upper():
-        # Flat ₹800/ton on net stock as of date
         total_in = _sum_scalar(in_q.with_entities(func.coalesce(func.sum(StockData.quantity), 0.0)))
         total_out = _sum_scalar(out_q.with_entities(func.coalesce(func.sum(StockExit.quantity), 0.0)))
         net_kg = max(0.0, total_in - total_out)
         net_ton = net_kg / KG_PER_TON
         return net_ton * FLAT_YEARLY_PER_TON
 
-    # Others: need exit per RST map
     exits = out_q.all()
     exit_by_rst = {}
     for ex in exits:
@@ -177,37 +184,54 @@ def _rental_for_combination(stockist: str, upto_date: date, commodity: str | Non
 
 @bp.route("/final-report", methods=["GET", "POST"])
 def final_report():
+    """
+    Adds split pricing:
+      - Accepts 'bd_qty' (quantity in KG to be valued at rate_bd),
+        'rate_good' (₹/kg), 'rate_bd' (₹/kg).
+      - Remaining (net_qty - bd_qty) is valued at rate_good.
+    """
     warehouses, commodities, stockists = _get_dropdowns()
 
-    # Defaults
+    # Defaults for template
     ctx = {
         "warehouses": warehouses,
         "commodities": commodities,
         "stockists": stockists,
-        "result": None,  # will hold computed dict for rendering
+        "result": None,  # computed dict
         "input_stockist": "",
         "input_date": "",
-        "input_rate": "",
+        "input_rate_good": "",
+        "input_rate_bd": "",
+        "input_bd_qty": "",
         "input_commodity": "",
         "input_warehouse": "",
+        "input_quality": "",
     }
 
     if request.method == "POST":
         stockist = (request.form.get("stockist") or "").strip()
         date_str = (request.form.get("date") or "").strip()
-        rate_str = (request.form.get("rate") or "").strip()
+
+        # NEW inputs
+        rate_good_str = (request.form.get("rate_good") or "").strip()
+        rate_bd_str   = (request.form.get("rate_bd") or "").strip()
+        bd_qty_str    = (request.form.get("bd_qty") or "").strip()   # Quantity at BD rate (in KG)
+
         commodity = (request.form.get("commodity") or "").strip()
         warehouse = (request.form.get("warehouse") or "").strip()
+        quality   = (request.form.get("quality") or "").strip()
 
         ctx.update({
             "input_stockist": stockist,
             "input_date": date_str,
-            "input_rate": rate_str,
+            "input_rate_good": rate_good_str,
+            "input_rate_bd": rate_bd_str,
+            "input_bd_qty": bd_qty_str,
             "input_commodity": commodity,
             "input_warehouse": warehouse,
+            "input_quality": quality,
         })
 
-        # validations
         if not stockist:
             flash("Stockist is required.", "danger")
             return render_template("company/final_report.html", **ctx)
@@ -216,41 +240,63 @@ def final_report():
             flash("Valid date is required (YYYY-MM-DD).", "danger")
             return render_template("company/final_report.html", **ctx)
 
-        # 1) Total Quantity (sum of quantity from stock_data)
-        in_q = db.session.query(func.coalesce(func.sum(StockData.quantity), 0.0))\
+        # --- 1) Total Quantity (sum of StockData.quantity up to date) with optional filters ---
+        in_q = db.session.query(func.coalesce(func.sum(StockData.quantity), 0.0)) \
             .filter(StockData.date <= upto_date,
                     func.upper(StockData.stockist_name) == func.upper(stockist))
         if commodity:
             in_q = in_q.filter(StockData.commodity == commodity)
         if warehouse:
             in_q = in_q.filter(StockData.warehouse == warehouse)
+        if quality and quality.strip().upper() != "ALL":
+            in_q = in_q.filter(func.upper(StockData.quality) == func.upper(quality))
         total_qty = _sum_scalar(in_q)  # KG
 
-        # 2) Reduction = 1.5% of total quantity (only for Maize)
+        # --- 2) Reduction = 1.5% of total quantity (only for Maize) ---
         reduction = 0.0
-        if commodity.lower() == "maize":
+        if (commodity or "").strip().lower() == "maize":
             reduction = round(total_qty * 0.015, 3)
 
-        # 3) Net Quantity = (1) - (2)
-        net_qty = max(0.0, total_qty - reduction)  # KG
+        # --- 3) Net Quantity (KG) ---
+        net_qty = max(0.0, total_qty - reduction)
 
-        # 4) Rate (₹ per KG)
-        try:
-            rate = float(rate_str) if rate_str else 0.0
-        except ValueError:
-            rate = 0.0
+        # --- 4) Parse rates & BD quantity (KG) ---
+        rate_good = _parse_float(rate_good_str, 0.0)
+        rate_bd   = _parse_float(rate_bd_str, 0.0)
+        bd_qty    = _parse_float(bd_qty_str, 0.0)
 
-        # 5) Total Cost = Net Quantity * Rate
-        total_cost = net_qty * rate
+        # Clamp bd_qty to [0, net_qty]
+        if bd_qty < 0:
+            bd_qty = 0.0
+        if bd_qty > net_qty:
+            bd_qty = net_qty
 
-        # 6) Rental (for entered combination up to date)
-        rental = _rental_for_combination(stockist, upto_date, commodity or None, warehouse or None)
+        good_qty = max(0.0, net_qty - bd_qty)
 
-        # 7) Interest (sum for entered combination up to date)
-        interest = _compute_interest(stockist, upto_date, commodity or None, warehouse or None)
+        # --- 5) Cost split ---
+        cost_bd   = bd_qty   * rate_bd
+        cost_good = good_qty * rate_good
+        total_cost = cost_bd + cost_good
 
-        # 8) Cash Loan (sum loanType='Cash')
-        cash_q = db.session.query(func.coalesce(func.sum(LoanData.amount), 0.0))\
+        # --- 6) Rental (with quality filter for IN/OUT) ---
+        rental = _rental_for_combination(
+            stockist=stockist,
+            upto_date=upto_date,
+            commodity=commodity or None,
+            warehouse=warehouse or None,
+            quality=quality or None,
+        )
+
+        # --- 7) Interest (no quality filter applied) ---
+        interest = _compute_interest(
+            stockist=stockist,
+            upto_date=upto_date,
+            commodity=commodity or None,
+            warehouse=warehouse or None,
+        )
+
+        # --- 8) Cash Loan (no quality) ---
+        cash_q = db.session.query(func.coalesce(func.sum(LoanData.amount), 0.0)) \
             .filter(func.upper(LoanData.stockist_name) == func.upper(stockist),
                     LoanData.date <= upto_date,
                     func.upper(LoanData.loan_type) == func.upper("Cash"))
@@ -260,8 +306,8 @@ def final_report():
             cash_q = cash_q.filter(LoanData.warehouse == warehouse)
         cash_loan = _sum_scalar(cash_q)
 
-        # 9) Margin Loan (sum loanType='Margin')
-        margin_loan_q = db.session.query(func.coalesce(func.sum(LoanData.amount), 0.0))\
+        # --- 9) Margin Loan (no quality) ---
+        margin_loan_q = db.session.query(func.coalesce(func.sum(LoanData.amount), 0.0)) \
             .filter(func.upper(LoanData.stockist_name) == func.upper(stockist),
                     LoanData.date <= upto_date,
                     func.upper(LoanData.loan_type) == func.upper("Margin"))
@@ -271,8 +317,8 @@ def final_report():
             margin_loan_q = margin_loan_q.filter(LoanData.warehouse == warehouse)
         margin_loan = _sum_scalar(margin_loan_q)
 
-        # 10) Margin Paid (sum from MarginData)
-        margin_paid_q = db.session.query(func.coalesce(func.sum(MarginData.amount), 0.0))\
+        # --- 10) Margin Paid (no quality) ---
+        margin_paid_q = db.session.query(func.coalesce(func.sum(MarginData.amount), 0.0)) \
             .filter(func.upper(MarginData.stockist_name) == func.upper(stockist),
                     MarginData.date <= upto_date)
         if commodity:
@@ -281,20 +327,30 @@ def final_report():
             margin_paid_q = margin_paid_q.filter(MarginData.warehouse == warehouse)
         margin_paid = _sum_scalar(margin_paid_q)
 
-        # 11) Net Payable = Total Cost - Rental - Interest - Cash Loan - Margin Loan + Margin Paid
+        # --- 11) Net Payable ---
         net_payable = total_cost - rental - interest - cash_loan - margin_loan + margin_paid
 
         ctx["result"] = {
+            # quantities
             "total_qty": round(total_qty, 2),
             "reduction": round(reduction, 2),
             "net_qty": round(net_qty, 2),
-            "rate": round(rate, 2),
+            "bd_qty": round(bd_qty, 2),
+            "good_qty": round(good_qty, 2),
+            # rates
+            "rate_good": round(rate_good, 2),
+            "rate_bd": round(rate_bd, 2),
+            # costs
+            "cost_good": round(cost_good, 2),
+            "cost_bd": round(cost_bd, 2),
             "total_cost": round(total_cost, 2),
+            # charges/loans
             "rental": round(rental, 2),
             "interest": round(interest, 2),
             "cash_loan": round(cash_loan, 2),
             "margin_loan": round(margin_loan, 2),
             "margin_paid": round(margin_paid, 2),
+            # final
             "net_payable": round(net_payable, 2),
         }
 
