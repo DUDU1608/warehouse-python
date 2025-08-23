@@ -205,38 +205,7 @@ def create_app() -> Flask:
         app.logger.debug("Buyer blueprints not fully registered: %s", e)
 
     # Company module
-    try:
-        from app.routes.company import (
-            dashboard as company_dashboard,
-            companyloan,
-            loanrepayment,
-            interest_payble,
-            interest_receivable,
-            rental_due,
-            expenditure,
-            breakeven_calculator,
-            profit_loss,
-            final_report,
-            company_loan_due,
-            residual_earning,
-            invoice
-        )
-        app.register_blueprint(company_dashboard.bp)
-        app.register_blueprint(companyloan.bp)
-        app.register_blueprint(loanrepayment.bp)
-        app.register_blueprint(interest_payble.bp)
-        app.register_blueprint(interest_receivable.bp)
-        app.register_blueprint(rental_due.bp)
-        app.register_blueprint(expenditure.bp)
-        app.register_blueprint(breakeven_calculator.bp)
-        app.register_blueprint(profit_loss.bp)
-        app.register_blueprint(final_report.bp)
-        app.register_blueprint(company_loan_due.bp)
-        app.register_blueprint(residual_earning.bp)
-        app.register_blueprint(invoice.bp)
-    except Exception as e:
-        app.logger.debug("Company blueprints not fully registered: %s", e)
-
+    
     # Stock summary
     try:
         from app.routes.stock_summary import bp as stock_summary_bp
