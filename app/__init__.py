@@ -3,15 +3,15 @@ import os
 import logging
 from pathlib import Path
 from importlib import import_module
+from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from sqlalchemy import MetaData
 
 from utils.hindi import to_hindi_name
-from datetime import timedelta
 
 # ----------------- Logging -----------------
 log = logging.getLogger(__name__)
@@ -51,11 +51,13 @@ def format_inr(value):
     except Exception:
         return "₹0.00"
 
+
 def kg_to_mt(value):
     try:
         return "{:.2f} MT".format((value or 0) / 1000)
     except Exception:
         return "0.00 MT"
+
 
 def format_date(value):
     try:
@@ -72,6 +74,7 @@ def format_date(value):
     except Exception:
         return value
 
+
 # ----------------- App Factory -----------------
 def create_app() -> Flask:
     app = Flask(__name__, instance_relative_config=True)
@@ -81,15 +84,6 @@ def create_app() -> Flask:
     if custom_instance:
         app.instance_path = custom_instance
     os.makedirs(app.instance_path, exist_ok=True)
-
-    # ... your other config (SQLALCHEMY_DATABASE_URI, etc.) ...
-
-    # Auto-logout / session settings
-    app.config.update(
-        SESSION_REFRESH_EACH_REQUEST=True,
-        PERMANENT_SESSION_LIFETIME=timedelta(minutes=10),
-    )
-
 
     # Resolve DB URI: prefer SQLALCHEMY_DATABASE_URI, then DATABASE_URL, else SQLite
     uri = os.environ.get("SQLALCHEMY_DATABASE_URI") or os.environ.get("DATABASE_URL")
@@ -109,6 +103,17 @@ def create_app() -> Flask:
         REDIS_URL=os.environ.get("REDIS_URL"),  # optional for Socket.IO message queue
     )
 
+    # Auto-logout / session settings (10 minutes inactivity)
+    app.config.update(
+        SESSION_REFRESH_EACH_REQUEST=True,
+        PERMANENT_SESSION_LIFETIME=timedelta(minutes=10),
+    )
+
+    # Ensure sessions are "permanent" so lifetime applies
+    @app.before_request
+    def _session_permanent():
+        session.permanent = True
+
     # Init extensions
     db.init_app(app)
     login_manager.init_app(app)
@@ -122,7 +127,8 @@ def create_app() -> Flask:
     app.jinja_env.filters["to_hindi"] = to_hindi_name
 
     # ----------------- Blueprints (all INSIDE the factory) -----------------
-    # Admin auth/public
+
+    # Auth / public
     try:
         from .routes import auth
         app.register_blueprint(auth.bp)
@@ -147,44 +153,43 @@ def create_app() -> Flask:
         app.logger.debug("Seller blueprints not fully registered: %s", e)
 
     # Stockist module
-   # Stockist module
-try:
-    from app.routes.stockist import (
-        dashboard as stockist_dashboard,
-        stockist,
-        stockdata,
-        stockexit,
-        loandata,
-        margindata,
-        rental_calculator,
-    )
-
-    app.register_blueprint(stockist_dashboard.bp)
-    app.register_blueprint(stockist.bp)
-    app.register_blueprint(stockdata.bp)
-    app.register_blueprint(stockexit.bp)
-    app.register_blueprint(loandata.bp)
-    app.register_blueprint(margindata.bp)
-    app.register_blueprint(rental_calculator.bp)
-
-    # Optional: stockist payments (module name may be stockist_payment.py)
     try:
-        from app.routes.stockist import stockist_payment
-        app.register_blueprint(stockist_payment.bp)
+        from app.routes.stockist import (
+            dashboard as stockist_dashboard,
+            stockist,
+            stockdata,
+            stockexit,
+            loandata,
+            margindata,
+            rental_calculator,
+        )
+
+        app.register_blueprint(stockist_dashboard.bp)
+        app.register_blueprint(stockist.bp)
+        app.register_blueprint(stockdata.bp)
+        app.register_blueprint(stockexit.bp)
+        app.register_blueprint(loandata.bp)
+        app.register_blueprint(margindata.bp)
+        app.register_blueprint(rental_calculator.bp)
+
+        # Optional: stockist payments (module may be stockist_payment.py)
+        try:
+            from app.routes.stockist import stockist_payment
+            app.register_blueprint(stockist_payment.bp)
+        except Exception as e:
+            app.logger.debug("Stockist payment blueprint not registered: %s", e)
+
+        # NEW: Stockist Loan Repayment
+        try:
+            from app.routes.stockist import loan_repayment as stockist_loan_repayment
+            app.register_blueprint(stockist_loan_repayment.bp)
+        except Exception as e:
+            app.logger.debug("Stockist loan repayment blueprint not registered: %s", e)
+
     except Exception as e:
-        app.logger.debug("Stockist payment blueprint not registered: %s", e)
+        app.logger.debug("Stockist blueprints not fully registered: %s", e)
 
-    # NEW: stockist loan repayments
-    try:
-        from app.routes.stockist import loan_repayment as stockist_loan_repayment
-        app.register_blueprint(stockist_loan_repayment.bp)
-    except Exception as e:
-        app.logger.debug("Stockist loan repayment blueprint not registered: %s", e)
-
-except Exception as e:
-    app.logger.debug("Stockist blueprints not fully registered: %s", e)
-
-    # Buyer module  ✅ moved out of the Stockist except; fixed indentation
+    # Buyer module
     try:
         from app.routes.buyer import (
             dashboard as buyer_dashboard,
@@ -213,7 +218,7 @@ except Exception as e:
             profit_loss,
             final_report,
             company_loan_due,
-            residual_earning
+            residual_earning,
         )
         app.register_blueprint(company_dashboard.bp)
         app.register_blueprint(companyloan.bp)
@@ -248,7 +253,7 @@ except Exception as e:
     # ----------------- Assistant (chat / Socket.IO) -----------------
     assistant_module = None
     last_err = None
-    for dotted in ("app.assistant", "app.app.assistant"):  # try common layouts
+    for dotted in ("app.assistant", "app.app.assistant"):
         try:
             assistant_module = import_module(dotted)
             app.logger.info("Assistant module loaded from %s", dotted)
@@ -310,4 +315,3 @@ except Exception as e:
         return {"ok": True}, 200
 
     return app
-
