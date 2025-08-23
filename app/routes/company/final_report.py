@@ -5,7 +5,13 @@ from flask import Blueprint, render_template, request, flash
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 from app import db
-from app.models import StockData, StockExit, LoanData, MarginData  # ensure these exist
+from app.models import (
+    StockData,
+    StockExit,
+    LoanData,
+    MarginData,
+    StockistLoanRepayment,   # ✅ include repayments
+)
 
 bp = Blueprint("final_report", __name__, url_prefix="/company")
 
@@ -43,18 +49,18 @@ def _sum_scalar(query):
     return float(val or 0.0)
 
 
-# --- daily accrual interest (unchanged; no quality filter applied here) ---
+# --- daily accrual interest; now subtracts loan repayments too ---
 def _compute_interest(stockist: str, upto_date: date, commodity: str | None, warehouse: str | None) -> float:
     """
     Daily simple interest @13.75% p.a. on:
-        outstanding = (cash loan + margin loan - margin paid)
+        outstanding = (cash loan + margin loan) - (margin paid) - (loan repayments)
     Outstanding is accumulated from transactions up to 'upto_date'.
-    Interest is summed daily between transaction dates (inclusive end).
+    Interest is summed daily between transaction dates (inclusive of end day).
     """
-    # Loans add to outstanding
+    # Loans (both cash + margin) add to outstanding
     loans_q = db.session.query(LoanData.date, LoanData.amount, LoanData.loan_type).filter(
         func.upper(LoanData.stockist_name) == func.upper(stockist),
-        LoanData.date <= upto_date
+        LoanData.date <= upto_date,
     )
     if commodity:
         loans_q = loans_q.filter(LoanData.commodity == commodity)
@@ -65,13 +71,24 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
     # Margin paid reduces outstanding
     margins_q = db.session.query(MarginData.date, MarginData.amount).filter(
         func.upper(MarginData.stockist_name) == func.upper(stockist),
-        MarginData.date <= upto_date
+        MarginData.date <= upto_date,
     )
     if commodity:
         margins_q = margins_q.filter(MarginData.commodity == commodity)
     if warehouse:
         margins_q = margins_q.filter(MarginData.warehouse == warehouse)
     margins = margins_q.order_by(MarginData.date.asc()).all()
+
+    # NEW: Loan repayments reduce outstanding
+    repays_q = db.session.query(StockistLoanRepayment.date, StockistLoanRepayment.amount).filter(
+        func.upper(StockistLoanRepayment.stockist_name) == func.upper(stockist),
+        StockistLoanRepayment.date <= upto_date,
+    )
+    if commodity:
+        repays_q = repays_q.filter(StockistLoanRepayment.commodity == commodity)
+    if warehouse:
+        repays_q = repays_q.filter(StockistLoanRepayment.warehouse == warehouse)
+    repayments = repays_q.order_by(StockistLoanRepayment.date.asc()).all()
 
     from collections import defaultdict
     delta_by_date = defaultdict(float)
@@ -81,6 +98,11 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
             delta_by_date[dt] += float(amt)
 
     for dt, amt in margins:
+        if dt and amt:
+            delta_by_date[dt] -= float(amt)
+
+    # ✅ subtract repayments
+    for dt, amt in repayments:
         if dt and amt:
             delta_by_date[dt] -= float(amt)
 
@@ -106,7 +128,7 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
         # apply all deltas on the event day
         outstanding += delta_by_date[d]
         if outstanding < 0:
-            outstanding = 0.0
+            outstanding = 0.0  # don't carry negative principal
         current_date = d
 
     # accrue from last event day THROUGH upto_date (inclusive)
@@ -117,9 +139,6 @@ def _compute_interest(stockist: str, upto_date: date, commodity: str | None, war
 
     return round(interest_total, 2)
 
-
-from datetime import timedelta
-from sqlalchemy import func
 
 def _accrue_piecewise(changes_by_date: dict, as_of: date, per_unit_per_day: float) -> float:
     """
@@ -141,7 +160,7 @@ def _accrue_piecewise(changes_by_date: dict, as_of: date, per_unit_per_day: floa
     total = 0.0
     for i in range(len(keys) - 1):
         d = keys[i]
-        running = max(0.0, running + changes.get(d, 0.0))  # never accrue negative
+        running = max(0.0, running + changes.get(d, 0.0))  # never accrue negative stock
         nxt = keys[i + 1]
         if nxt <= d:
             continue
@@ -149,6 +168,7 @@ def _accrue_piecewise(changes_by_date: dict, as_of: date, per_unit_per_day: floa
         if running > 0 and days > 0:
             total += running * per_unit_per_day * days
     return total
+
 
 def _rental_for_combination(
     stockist: str,
@@ -168,11 +188,11 @@ def _rental_for_combination(
 
     in_q = StockData.query.filter(
         func.upper(StockData.stockist_name) == func.upper(stockist),
-        StockData.date <= upto_date
+        StockData.date <= upto_date,
     )
     out_q = StockExit.query.filter(
         func.upper(StockExit.stockist_name) == func.upper(stockist),
-        StockExit.date <= upto_date
+        StockExit.date <= upto_date,
     )
     if commodity:
         in_q = in_q.filter(StockData.commodity == commodity)
@@ -214,7 +234,7 @@ def _rental_for_combination(
 @bp.route("/final-report", methods=["GET", "POST"])
 def final_report():
     """
-    Adds split pricing:
+    Split pricing:
       - Accepts 'bd_qty' (quantity in KG to be valued at rate_bd),
         'rate_good' (₹/kg), 'rate_bd' (₹/kg).
       - Remaining (net_qty - bd_qty) is valued at rate_good.
@@ -241,7 +261,7 @@ def final_report():
         stockist = (request.form.get("stockist") or "").strip()
         date_str = (request.form.get("date") or "").strip()
 
-        # NEW inputs
+        # Split pricing inputs
         rate_good_str = (request.form.get("rate_good") or "").strip()
         rate_bd_str   = (request.form.get("rate_bd") or "").strip()
         bd_qty_str    = (request.form.get("bd_qty") or "").strip()   # Quantity at BD rate (in KG)
@@ -295,11 +315,7 @@ def final_report():
         bd_qty    = _parse_float(bd_qty_str, 0.0)
 
         # Clamp bd_qty to [0, net_qty]
-        if bd_qty < 0:
-            bd_qty = 0.0
-        if bd_qty > net_qty:
-            bd_qty = net_qty
-
+        bd_qty = max(0.0, min(bd_qty, net_qty))
         good_qty = max(0.0, net_qty - bd_qty)
 
         # --- 5) Cost split ---
@@ -316,7 +332,7 @@ def final_report():
             quality=quality or None,
         )
 
-        # --- 7) Interest (no quality filter applied) ---
+        # --- 7) Interest (now subtracts repayments as well) ---
         interest = _compute_interest(
             stockist=stockist,
             upto_date=upto_date,
@@ -356,7 +372,8 @@ def final_report():
             margin_paid_q = margin_paid_q.filter(MarginData.warehouse == warehouse)
         margin_paid = _sum_scalar(margin_paid_q)
 
-        # --- 11) Net Payable ---
+        # NOTE: Net payable formula remains unchanged; if you also want repayments
+        # to reduce the principal used here, we can switch to "net outstanding" later.
         net_payable = total_cost - rental - interest - cash_loan - margin_loan + margin_paid
 
         ctx["result"] = {
