@@ -150,52 +150,114 @@ def stockist_module():
             margin_summary[wh] = 0
         margin_summary[wh] += amt
 
-    # --------------------------------
-    # 4. Rental Due (by warehouse and commodity)
-    # --------------------------------
-    rental_rate = 3.334
-    today = date.today()
+    from datetime import date, timedelta
 
-    # Collect all (warehouse, commodity) pairs
-    pairs = set((entry.warehouse, entry.commodity) for entry in stock_data)
-    rental_due = {}
-    for wh, commodity in pairs:
-        # Net stock: total in - total out
-        total_in = sum((e.quantity or 0) for e in StockData.query.filter_by(stockist_name=name, warehouse=wh, commodity=commodity).all())
-        total_out = sum((e.quantity or 0) for e in StockExit.query.filter_by(stockist_name=name, warehouse=wh, commodity=commodity).all())
-        net_qty_kg = total_in - total_out
-        net_qty_mt = net_qty_kg / 1000
+# ---------- helpers (piecewise daily accrual) ----------
+def _qty_kg(rec):
+    """Prefer net_qty if present, else quantity; return KG as float."""
+    v = getattr(rec, "net_qty", None)
+    if v is None:
+        v = getattr(rec, "quantity", 0.0) or 0.0
+    return float(v)
 
-        # Rental = net_qty_mt * rental_rate * number of days since earliest entry for this stockist/warehouse/commodity
-        first_entry = StockData.query.filter_by(stockist_name=name, warehouse=wh, commodity=commodity).order_by(StockData.date).first()
-        if first_entry:
-            num_days = (today - first_entry.date).days + 1
-        else:
-            num_days = 0
+def _accrue_piecewise(changes_by_date, as_of, per_unit_per_day):
+    """
+    changes_by_date: {date -> delta_amount}  (amount can be MT for rental, or ₹ for interest)
+    per_unit_per_day: multiplier per 'amount' per day (e.g. rental_rate, or daily interest rate)
+    Accrues from each change date up to the next change (exclusive), and up to as_of (inclusive via +1).
+    """
+    if not changes_by_date:
+        return 0.0
+    # consider only events up to and including as_of
+    changes = {d: float(v) for d, v in changes_by_date.items() if d and d <= as_of}
+    if not changes:
+        return 0.0
 
-        total_rental = net_qty_mt * rental_rate * num_days if net_qty_mt > 0 else 0
-        if wh not in rental_due:
-            rental_due[wh] = {}
-        rental_due[wh][commodity] = round(total_rental, 2)
+    keys = sorted(changes.keys())
+    end_boundary = as_of + timedelta(days=1)
+    keys.append(end_boundary)
 
-    # --------------------------------
-    # 5. Interest Due (by warehouse)
-    # --------------------------------
-    interest_rate = 13.75
-    warehouses = set(entry.warehouse for entry in loan_data)
-    interest_due = {}
-    for wh in warehouses:
-        total_loan = sum((e.amount or 0) for e in LoanData.query.filter_by(stockist_name=name, warehouse=wh).all())
-        total_margin = sum((e.amount or 0) for e in MarginData.query.filter_by(stockist_name=name, warehouse=wh).all())
-        first_loan = LoanData.query.filter_by(stockist_name=name, warehouse=wh).order_by(LoanData.date).first()
-        if first_loan:
-            num_days = (today - first_loan.date).days + 1
-        else:
-            num_days = 0
+    running = 0.0
+    total = 0.0
+    for i in range(len(keys) - 1):
+        d = keys[i]
+        # apply change at start of day 'd'
+        running = max(0.0, running + changes.get(d, 0.0))  # never accrue negative
+        nxt = keys[i + 1]
+        if nxt <= d:
+            continue
+        days = (nxt - d).days
+        if running > 0 and days > 0:
+            total += running * per_unit_per_day * days
+    return total
 
-        principal = total_loan - total_margin
-        interest_amt = principal * (interest_rate / 100) * (num_days / 365) if principal > 0 and num_days > 0 else 0
-        interest_due[wh] = round(interest_amt, 2)
+# =======================================================
+# 4) RENTAL DUE — daily, cumulative till today, per (warehouse, commodity)
+# =======================================================
+rental_rate = 3.334  # per MT per day
+as_of = date.today()
+
+# Build the set of (warehouse, commodity) pairs that actually had movement
+pairs = set(
+    db.session.query(StockData.warehouse, StockData.commodity)
+      .filter_by(stockist_name=name).distinct().all()
+)
+pairs |= set(
+    db.session.query(StockExit.warehouse, StockExit.commodity)
+      .filter_by(stockist_name=name).distinct().all()
+)
+
+rental_due = {}
+for wh, commodity in pairs:
+    # Collect dated quantity deltas (in MT) for this (wh, commodity)
+    changes = {}
+
+    # Stock IN (positive)
+    for e in StockData.query.filter_by(stockist_name=name, warehouse=wh, commodity=commodity).all():
+        changes[e.date] = changes.get(e.date, 0.0) + (_qty_kg(e) / 1000.0)
+
+    # Stock OUT (negative)
+    for e in StockExit.query.filter_by(stockist_name=name, warehouse=wh, commodity=commodity).all():
+        changes[e.date] = changes.get(e.date, 0.0) - (_qty_kg(e) / 1000.0)
+
+    total_rental = _accrue_piecewise(changes, as_of, rental_rate)
+    rental_due.setdefault(wh, {})[commodity] = round(total_rental, 2)
+
+# =======================================================
+# 5) INTEREST DUE — daily, cumulative till today, per warehouse
+# =======================================================
+interest_rate = 13.75  # % p.a.
+daily_rate = interest_rate / 100.0 / 365.0
+as_of = date.today()
+
+# Warehouses where any loan/margin occurred
+warehouses = set(
+    db.session.query(LoanData.warehouse).filter_by(stockist_name=name).distinct().all()
+)
+warehouses |= set(
+    db.session.query(MarginData.warehouse).filter_by(stockist_name=name).distinct().all()
+)
+# flatten tuples and drop Nones
+warehouses = {w[0] for w in warehouses if w and w[0]}
+
+interest_due = {}
+for wh in warehouses:
+    # Build dated principal changes: +loan, -margin
+    changes = {}
+
+    for e in LoanData.query.filter_by(stockist_name=name, warehouse=wh).all():
+        amt = float(e.amount or 0.0)
+        if amt:
+            changes[e.date] = changes.get(e.date, 0.0) + amt
+
+    for e in MarginData.query.filter_by(stockist_name=name, warehouse=wh).all():
+        amt = float(e.amount or 0.0)
+        if amt:
+            changes[e.date] = changes.get(e.date, 0.0) - amt
+
+    interest_amt = _accrue_piecewise(changes, as_of, daily_rate)
+    interest_due[wh] = round(interest_amt, 2)
+
 
     return render_template(
         'user/stockist_module.html',
