@@ -1,122 +1,127 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Create Invoice</title>
+  <title>New Invoice</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background:#f6f8fb; }
-    .card { border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.06); }
-    .table td, .table th { vertical-align: middle; }
+    body{background:#f7f8fb}
+    .card{border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.05)}
+    .table td,.table th{vertical-align:middle}
   </style>
 </head>
 <body>
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Create Invoice</h3>
-    <a class="btn btn-outline-dark" href="{{ url_for('company_dashboard.finance_dashboard') }}">← Company Finance Dashboard</a>
+    <h3 class="mb-0">🧾 Create Invoice</h3>
+    <div>
+      <a class="btn btn-outline-secondary" href="{{ url_for('company_dashboard.finance_dashboard') }}">← Finance Dashboard</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('invoice.list_invoices') }}">📄 All Invoices</a>
+    </div>
   </div>
 
-  {% with msgs = get_flashed_messages(with_categories=true) %}
+  {% with msgs=get_flashed_messages(with_categories=true) %}
     {% if msgs %}
-      {% for cat, msg in msgs %}
-        <div class="alert alert-{{ 'warning' if cat=='message' else cat }} alert-dismissible fade show" role="alert">
-          {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      {% for cat,msg in msgs %}
+        <div class="alert alert-{{ 'warning' if cat=='message' else cat }} alert-dismissible fade show">
+          {{ msg }} <button class="btn-close" data-bs-dismiss="alert"></button>
         </div>
       {% endfor %}
     {% endif %}
   {% endwith %}
 
   <div class="card p-3">
-    <form method="POST" action="{{ url_for('invoice.create_invoice') }}">
+    <form method="POST" action="{{ url_for('invoice.create_invoice') }}" id="invForm">
       <div class="row g-3">
         <div class="col-md-4">
-          <label class="form-label">Customer Name *</label>
+          <label class="form-label">Invoice No</label>
+          <input class="form-control" value="{{ invoice_no }}" readonly>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Date</label>
+          <input type="date" name="date" class="form-control" value="{{ today }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Customer Name</label>
           <select name="buyer_id" class="form-select" required>
             <option value="">— Select —</option>
             {% for b in buyers %}
-              <option value="{{ b.id }}">{{ b.buyer_name }} — {{ b.mobile_no }}</option>
+            <option value="{{ b.id }}">{{ b.buyer_name }} — {{ b.mobile_no }}</option>
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-2">
-          <label class="form-label">Invoice No</label>
-          <input class="form-control" value="{{ invoice_no }}" disabled>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Date *</label>
-          <input type="date" name="date" class="form-control" value="{{ today }}" required>
-        </div>
-        <div class="col-md-3">
+
+        <div class="col-md-4">
           <label class="form-label">Vehicle No</label>
-          <input name="vehicle_no" class="form-control" placeholder="WB19J/7944">
+          <input name="vehicle_no" class="form-control" placeholder="e.g. BR-01-XX-1234">
         </div>
         <div class="col-md-4">
           <label class="form-label">Driver No</label>
-          <input name="driver_no" class="form-control" placeholder="Driver mobile">
+          <input name="driver_no" class="form-control" placeholder="Driver phone">
         </div>
-        <div class="col-md-8">
+        <div class="col-md-4">
           <label class="form-label">Address</label>
-          <input name="address" class="form-control" placeholder="Customer address (optional)">
+          <input name="address" class="form-control" placeholder="Delivery address (optional)">
         </div>
       </div>
 
-      <hr class="my-3">
-
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0">Descriptions of Goods</h6>
-        <button type="button" class="btn btn-sm btn-success" id="addRow">Add Row</button>
-      </div>
+      <hr class="my-4">
 
       <div class="table-responsive">
-        <table class="table table-bordered align-middle" id="itemsTable">
+        <table class="table table-bordered align-middle" id="itemsTbl">
           <thead class="table-light">
             <tr>
-              <th style="width: 50%;">Description</th>
-              <th style="width: 15%;">Price</th>
-              <th style="width: 15%;">Qty</th>
-              <th style="width: 15%;">Amount</th>
-              <th style="width: 5%;">Action</th>
+              <th style="width:5%">#</th>
+              <th>Descriptions of Goods</th>
+              <th style="width:15%">Price</th>
+              <th style="width:15%">Qty (Quintal)</th>
+              <th style="width:15%">Amount</th>
+              <th style="width:8%"></th>
             </tr>
           </thead>
           <tbody>
-            <!-- one starter row -->
             <tr>
-              <td><input name="item_desc[]" class="form-control" placeholder="e.g., PADDY Hybrid" required></td>
-              <td><input type="number" step="0.01" name="item_price[]" class="form-control item-price" required></td>
-              <td><input type="number" step="0.01" name="item_qty[]" class="form-control item-qty" required></td>
-              <td><input class="form-control item-amount" readonly></td>
-              <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-del">×</button></td>
+              <td class="text-muted">1</td>
+              <td><input name="item_desc[]" class="form-control" required></td>
+              <td><input name="item_price[]" type="number" step="0.01" class="form-control item-price" value="0"></td>
+              <td><input name="item_qty[]" type="number" step="0.01" class="form-control item-qty" value="0"></td>
+              <td><input class="form-control item-amt" value="0.00" readonly></td>
+              <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">✕</button></td>
             </tr>
           </tbody>
           <tfoot>
             <tr>
-              <th colspan="3" class="text-end">Grand Total</th>
-              <th><input id="grandTotal" class="form-control" readonly></th>
-              <th></th>
-            </tr>
-            <tr>
-              <th colspan="3" class="text-end">C. GST</th>
-              <th><input value="0.00" class="form-control" readonly></th>
-              <th></th>
-            </tr>
-            <tr>
-              <th colspan="3" class="text-end">S. GST</th>
-              <th><input value="0.00" class="form-control" readonly></th>
-              <th></th>
-            </tr>
-            <tr>
-              <th colspan="3" class="text-end">Sub Total</th>
-              <th><input id="subTotal" class="form-control" readonly></th>
-              <th></th>
+              <td colspan="6">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">+ Add Row</button>
+              </td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      <div class="text-end">
+      <div class="row g-3 justify-content-end">
+        <div class="col-md-3">
+          <label class="form-label">CGST</label>
+          <input class="form-control" value="0.00" readonly>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">SGST</label>
+          <input class="form-control" value="0.00" readonly>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Grand Total</label>
+          <input id="grandTotal" class="form-control" value="0.00" readonly>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Sub Total (GT - CGST - SGST)</label>
+          <input id="subTotal" class="form-control" value="0.00" readonly>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex gap-2">
         <button class="btn btn-primary">Save & Generate PDF</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('company_dashboard.finance_dashboard') }}">Cancel</a>
       </div>
     </form>
   </div>
@@ -124,47 +129,44 @@
 
 <script>
 function recalcRow(tr){
-  const p = parseFloat(tr.querySelector('.item-price')?.value || 0);
-  const q = parseFloat(tr.querySelector('.item-qty')?.value || 0);
-  const amt = (p * q) || 0;
-  tr.querySelector('.item-amount').value = amt.toFixed(2);
+  const price = parseFloat(tr.querySelector('.item-price').value||0);
+  const qty = parseFloat(tr.querySelector('.item-qty').value||0);
+  const amt = (price*qty)||0;
+  tr.querySelector('.item-amt').value = amt.toFixed(2);
+  recalcTotals();
 }
-
 function recalcTotals(){
-  let g = 0;
-  document.querySelectorAll('#itemsTable tbody .item-amount').forEach(inp=>{
-    g += parseFloat(inp.value || 0);
-  });
-  document.getElementById('grandTotal').value = g.toFixed(2);
-  document.getElementById('subTotal').value = g.toFixed(2); // CGST & SGST are always 0
+  let gt = 0;
+  document.querySelectorAll('.item-amt').forEach(i=>gt += parseFloat(i.value||0));
+  document.getElementById('grandTotal').value = gt.toFixed(2);
+  document.getElementById('subTotal').value = gt.toFixed(2); // CGST/SGST always 0
 }
-
-document.getElementById('addRow').addEventListener('click', ()=>{
+function addRow(){
+  const tbody = document.querySelector('#itemsTbl tbody');
   const tr = document.createElement('tr');
+  const idx = tbody.children.length + 1;
   tr.innerHTML = `
-    <td><input name="item_desc[]" class="form-control" placeholder="Description" required></td>
-    <td><input type="number" step="0.01" name="item_price[]" class="form-control item-price" required></td>
-    <td><input type="number" step="0.01" name="item_qty[]" class="form-control item-qty" required></td>
-    <td><input class="form-control item-amount" readonly></td>
-    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-del">×</button></td>
-  `;
-  document.querySelector('#itemsTable tbody').appendChild(tr);
+    <td class="text-muted">${idx}</td>
+    <td><input name="item_desc[]" class="form-control" required></td>
+    <td><input name="item_price[]" type="number" step="0.01" class="form-control item-price" value="0"></td>
+    <td><input name="item_qty[]" type="number" step="0.01" class="form-control item-qty" value="0"></td>
+    <td><input class="form-control item-amt" value="0.00" readonly></td>
+    <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)">✕</button></td>`;
+  tbody.appendChild(tr);
+  tr.querySelectorAll('.item-price,.item-qty').forEach(el=>el.addEventListener('input',()=>recalcRow(tr)));
+}
+function removeRow(btn){
+  const tr = btn.closest('tr');
+  tr.parentNode.removeChild(tr);
+  // re-number
+  document.querySelectorAll('#itemsTbl tbody tr').forEach((row,i)=>row.children[0].innerText = (i+1));
+  recalcTotals();
+}
+document.querySelectorAll('.item-price,.item-qty').forEach(el=>{
+  el.addEventListener('input',()=>recalcRow(el.closest('tr')));
 });
-
-document.addEventListener('input', (e)=>{
-  if (e.target.classList.contains('item-price') || e.target.classList.contains('item-qty')){
-    const tr = e.target.closest('tr');
-    recalcRow(tr);
-    recalcTotals();
-  }
-});
-document.addEventListener('click', (e)=>{
-  if (e.target.classList.contains('btn-del')){
-    const tr = e.target.closest('tr');
-    tr.remove();
-    recalcTotals();
-  }
-});
+recalcTotals();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
