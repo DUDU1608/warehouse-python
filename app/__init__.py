@@ -11,6 +11,7 @@ from flask_migrate import Migrate
 from sqlalchemy import MetaData
 
 from utils.hindi import to_hindi_name
+from datetime import timedelta
 
 # ----------------- Logging -----------------
 log = logging.getLogger(__name__)
@@ -80,6 +81,15 @@ def create_app() -> Flask:
     if custom_instance:
         app.instance_path = custom_instance
     os.makedirs(app.instance_path, exist_ok=True)
+
+    # ... your other config (SQLALCHEMY_DATABASE_URI, etc.) ...
+
+    # Auto-logout / session settings
+    app.config.update(
+        SESSION_REFRESH_EACH_REQUEST=True,
+        PERMANENT_SESSION_LIFETIME=timedelta(minutes=10),
+    )
+
 
     # Resolve DB URI: prefer SQLALCHEMY_DATABASE_URI, then DATABASE_URL, else SQLite
     uri = os.environ.get("SQLALCHEMY_DATABASE_URI") or os.environ.get("DATABASE_URL")
