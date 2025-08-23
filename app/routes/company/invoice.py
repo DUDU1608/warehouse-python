@@ -242,12 +242,158 @@ def _build_invoice_pdf(inv: Invoice, items: list[InvoiceItem]) -> BytesIO:
 
 @bp.get("/<int:invoice_id>/pdf")
 def pdf(invoice_id: int):
-    inv = Invoice.query.get(invoice_id)
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    )
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    inv: Invoice | None = Invoice.query.get(invoice_id)
     if not inv:
         flash("Invoice not found.", "danger")
-        return redirect(url_for("invoice.new_invoice"))
+        return redirect(url_for("invoice.list_invoices"))
 
     items = InvoiceItem.query.filter_by(invoice_id=inv.id).all()
-    buf = _build_invoice_pdf(inv, items)
-    filename = f"invoice_{inv.invoice_no}.pdf"
-    return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=filename)
+
+    # --- PDF doc (margins leave space for the header band we draw) ---
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=48 * mm,     # header area
+        bottomMargin=20 * mm,
+        title=f"Invoice {inv.invoice_no}",
+    )
+    styles = getSampleStyleSheet()
+    story = []
+
+    # ---------- Meta block ----------
+    meta = [
+        ["CUSTOMER NAME", inv.customer_name, "INVOICE", f"No: {inv.invoice_no}"],
+        ["INVOICE DATE", inv.date.strftime("%d-%m-%Y"), "Driver No", inv.driver_no or ""],
+        ["Vehicle No", inv.vehicle_no or "", "Address", inv.address or ""],
+    ]
+    meta_tbl = Table(meta, colWidths=[30*mm, 75*mm, 25*mm, None])
+    meta_tbl.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.8, colors.black),
+        ("INNERGRID", (0,0), (-1,-1), 0.3, colors.black),
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+        ("BACKGROUND", (2,0), (2,-1), colors.whitesmoke),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    story.append(meta_tbl)
+    story.append(Spacer(1, 6 * mm))
+
+    # ---------- Items table ----------
+    data = [["SL NO", "DESCRIPTIONS OF GOODS", "PRICE (₹/Qt)", "QTY (Quintal)", "AMOUNT (₹)"]]
+    for idx, it in enumerate(items, start=1):
+        data.append([
+            str(idx),
+            it.description,
+            f"{it.price:.2f}",
+            f"{it.qty:g}",
+            f"{it.amount:.2f}",
+        ])
+
+    item_tbl = Table(
+        data,
+        colWidths=[12*mm, None, 30*mm, 30*mm, 32*mm],
+        repeatRows=1
+    )
+
+    # zebra striping for readability
+    style_cmds = [
+        ("GRID", (0,0), (-1,-1), 0.4, colors.black),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING", (0,0), (-1,-1), 5),
+        ("RIGHTPADDING", (0,0), (-1,-1), 5),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ("ALIGN", (2,1), (2,-1), "RIGHT"),
+        ("ALIGN", (3,1), (3,-1), "RIGHT"),
+        ("ALIGN", (4,1), (4,-1), "RIGHT"),
+    ]
+    for r in range(1, len(data)):
+        if r % 2 == 0:
+            style_cmds.append(("BACKGROUND", (0, r), (-1, r), colors.whitesmoke))
+    item_tbl.setStyle(TableStyle(style_cmds))
+    story.append(item_tbl)
+    story.append(Spacer(1, 6 * mm))
+
+    # ---------- Totals (right aligned box) ----------
+    totals = [
+        ["G. TOTAL", f"{inv.grand_total:.2f}"],
+        ["C. GST - %", f"{inv.cgst:.2f}"],
+        ["S. GST - %", f"{inv.sgst:.2f}"],
+        ["S. TOTAL", f"{inv.sub_total:.2f}"],
+    ]
+    totals_tbl = Table(totals, colWidths=[40*mm, 35*mm], hAlign="RIGHT")
+    totals_tbl.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.4, colors.black),
+        ("BACKGROUND", (0,0), (0,-1), colors.whitesmoke),
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica"),
+        ("FONTNAME", (0,3), (-1,3), "Helvetica-Bold"),
+        ("ALIGN", (1,0), (1,-1), "RIGHT"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ]))
+    story.append(totals_tbl)
+    story.append(Spacer(1, 4 * mm))
+
+    # ---------- Amount in words + signature ----------
+    try:
+        words = _amount_to_words_rupees(inv.grand_total)  # uses helper in your file
+    except NameError:
+        words = f"{inv.grand_total:.2f}"
+    story.append(Paragraph(f"<b>Amount in words:</b> {words}", styles["Normal"]))
+    story.append(Spacer(1, 10 * mm))
+    story.append(Paragraph("For <b>Shree Anunay Agro Pvt Ltd</b><br/>Authorized Signatory", styles["Normal"]))
+
+    # ---------- Header/Footer drawing ----------
+    def _draw_header_footer(canv, doc_):
+        width, height = A4
+        canv.saveState()
+
+        # Header band
+        band_h = 22 * mm
+        canv.setFillColorRGB(0.95, 0.45, 0.0)
+        canv.rect(18*mm, height - 30*mm, width - 36*mm, band_h, stroke=0, fill=1)
+        canv.setFillColor(colors.white)
+        canv.setFont("Helvetica-Bold", 16)
+        canv.drawCentredString(width / 2, height - 22*mm, CO_NAME)
+
+        # Company info
+        canv.setFillColor(colors.black)
+        canv.setFont("Helvetica", 9)
+        y = height - 36*mm
+        canv.drawString(20*mm, y, CO_ADDR); y -= 4.2*mm
+        canv.drawString(20*mm, y, f"Mobile: {CO_MOBILE}"); y -= 4.2*mm
+        canv.drawString(20*mm, y, f"Email: {CO_EMAIL} | Website: {CO_WEBSITE}"); y -= 4.2*mm
+        canv.drawString(20*mm, y, f"GSTIN: {CO_GSTIN}")
+
+        # Footer page number
+        canv.setFont("Helvetica", 8)
+        canv.drawRightString(width - 18*mm, 12*mm, f"Page {doc_.page}")
+        canv.restoreState()
+
+    doc.build(story, onFirstPage=_draw_header_footer, onLaterPages=_draw_header_footer)
+
+    buf.seek(0)
+    return send_file(buf, mimetype="application/pdf", as_attachment=True,
+                     download_name=f"invoice_{inv.invoice_no}.pdf")
+
