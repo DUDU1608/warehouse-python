@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from functools import wraps
+from collections import defaultdict
 
 from flask import Blueprint, render_template, session, redirect, url_for
 from app import db
@@ -174,16 +175,55 @@ def stockist_module():
 
     # --------------------------------
     # 1) My Materials Stored (summary)
+    #    Now includes StockExit (OUT) and shows IN/OUT/NET
     # --------------------------------
-    stock_data = StockData.query.filter_by(stockist_name=name).all()
+    # Fetch all in/out for the user once
+    stock_in_list = StockData.query.filter_by(stockist_name=name).all()
+    stock_out_list = StockExit.query.filter_by(stockist_name=name).all()
 
-    material_summary = {}
-    for entry in stock_data:
-        wh = entry.warehouse
-        com = entry.commodity
-        qty_mt = _qty_kg(entry) / 1000.0
-        material_summary.setdefault(wh, {})
-        material_summary[wh][com] = material_summary[wh].get(com, 0.0) + qty_mt
+    # material_io collects detailed in/out/net per (warehouse, commodity)
+    material_io: dict[str, dict[str, dict]] = defaultdict(lambda: defaultdict(dict))
+
+    # Accumulate IN
+    for e in stock_in_list:
+        wh, com = e.warehouse, e.commodity
+        q_mt = _qty_kg(e) / 1000.0
+        rec = material_io[wh].get(com)
+        if not rec:
+            rec = material_io[wh][com] = {
+                "in_mt": 0.0,
+                "out_mt": 0.0,
+                "net_mt": 0.0,
+                "last_in": None,
+                "last_out": None,
+            }
+        rec["in_mt"] += q_mt
+        if e.date:
+            rec["last_in"] = max(rec["last_in"], e.date) if rec["last_in"] else e.date
+
+    # Accumulate OUT
+    for e in stock_out_list:
+        wh, com = e.warehouse, e.commodity
+        q_mt = _qty_kg(e) / 1000.0
+        rec = material_io[wh].get(com)
+        if not rec:
+            rec = material_io[wh][com] = {
+                "in_mt": 0.0,
+                "out_mt": 0.0,
+                "net_mt": 0.0,
+                "last_in": None,
+                "last_out": None,
+            }
+        rec["out_mt"] += q_mt
+        if e.date:
+            rec["last_out"] = max(rec["last_out"], e.date) if rec["last_out"] else e.date
+
+    # Compute NET and also build backward-compatible summary {wh: {com: net_mt}}
+    material_summary: dict[str, dict[str, float]] = defaultdict(dict)
+    for wh, com_map in material_io.items():
+        for com, rec in com_map.items():
+            rec["net_mt"] = max(0.0, (rec["in_mt"] - rec["out_mt"]))
+            material_summary[wh][com] = rec["net_mt"]
 
     # --------------------------------
     # 2) Loans Received (summary)
@@ -218,9 +258,9 @@ def stockist_module():
     rental_rate = 3.334  # ₹ per MT per day
 
     # Build movement pairs (warehouse, commodity) with activity
-    rows_in = db.session.query(StockData.warehouse, StockData.commodity)\
+    rows_in = db.session.query(StockData.warehouse, StockData.commodity) \
                         .filter_by(stockist_name=name).distinct().all()
-    rows_out = db.session.query(StockExit.warehouse, StockExit.commodity)\
+    rows_out = db.session.query(StockExit.warehouse, StockExit.commodity) \
                          .filter_by(stockist_name=name).distinct().all()
 
     pairs = {(r[0], r[1]) for r in rows_in if r and r[0] and r[1]}
@@ -273,12 +313,16 @@ def stockist_module():
     # Render
     return render_template(
         "user/stockist_module.html",
-        stock_data=stock_data,
-        material_summary=material_summary,
+        # Materials
+        material_summary=material_summary,   # {warehouse: {commodity: net_mt}}  (backward-compatible)
+        material_io=material_io,             # {warehouse: {commodity: {'in_mt','out_mt','net_mt','last_in','last_out'}}}
+        stock_data=stock_in_list,            # original list (if your template uses it)
+        # Loans & margins
         loan_data=loan_data,
         loan_summary=loan_summary,
         margin_data=margin_data,
         margin_summary=margin_summary,
+        # Charges
         rental_due=rental_due,
         rental_rate=rental_rate,
         interest_due=interest_due,
