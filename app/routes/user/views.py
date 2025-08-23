@@ -316,13 +316,12 @@ def stockist_module():
         # Materials
         material_summary=material_summary,   # {warehouse: {commodity: net_mt}}  (backward-compatible)
         material_io=material_io,             # {warehouse: {commodity: {'in_mt','out_mt','net_mt','last_in','last_out'}}}
-        stock_data=stock_in_list,            # original list (if your template uses it)
-        # Loans & margins
+        stock_data=stock_in_list,  
+        stock_out_list=stock_out_list,
         loan_data=loan_data,
         loan_summary=loan_summary,
         margin_data=margin_data,
         margin_summary=margin_summary,
-        # Charges
         rental_due=rental_due,
         rental_rate=rental_rate,
         interest_due=interest_due,
