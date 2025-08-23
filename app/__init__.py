@@ -2,7 +2,6 @@
 import os
 import logging
 from pathlib import Path
-from importlib import import_module
 from datetime import timedelta
 
 from flask import Flask, session
@@ -109,9 +108,9 @@ def create_app() -> Flask:
         PERMANENT_SESSION_LIFETIME=timedelta(minutes=10),
     )
 
+    # Ensure session lifetime applies
     @app.before_request
     def _session_permanent():
-        # Ensure session lifetime applies
         session.permanent = True
 
     # Init extensions
@@ -233,7 +232,7 @@ def create_app() -> Flask:
     except Exception as e:
         app.logger.exception("Buyer payments blueprint failed: %s", e)
 
-    # Company module (each separately so one bad module doesn't hide others)
+    # Company module
     try:
         from app.routes.company import dashboard as company_dashboard
         app.register_blueprint(company_dashboard.bp)
@@ -317,29 +316,23 @@ def create_app() -> Flask:
         app.logger.exception("User blueprints not fully registered: %s", e)
 
     # ----------------- Assistant (chat / Socket.IO) -----------------
-    assistant_module = None
-    last_err = None
-    for dotted in ("app.assistant", "app.app.assistant"):  # try common layouts
-        try:
-            assistant_module = import_module(dotted)
-            app.logger.info("Assistant module loaded from %s", dotted)
-            break
-        except Exception as e:
-            last_err = e
-
-    if assistant_module is None:
-        app.logger.exception(
-            "Failed to import assistant module from app.assistant OR app.app.assistant"
-        )
-        raise last_err
+    try:
+        # Import only from the canonical path to avoid double-importing the package
+        from app import assistant as assistant_module
+        app.logger.info("Assistant module loaded from app.assistant")
+    except Exception:
+        app.logger.exception("Failed to import assistant module from app.assistant")
+        raise
 
     assistant_bp = getattr(assistant_module, "assistant_bp", None)
     assistant_socketio = getattr(assistant_module, "socketio", None)
     if assistant_bp is None or assistant_socketio is None:
         raise RuntimeError("assistant module missing 'assistant_bp' or 'socketio'.")
 
+    # Register assistant blueprint
     app.register_blueprint(assistant_bp)
 
+    # Initialize Socket.IO (optionally with Redis message queue)
     init_kwargs = {"cors_allowed_origins": "*"}
     mq_url = app.config.get("REDIS_URL")
     if mq_url:
