@@ -368,3 +368,22 @@ class ChatMessage(db.Model):
     is_private = db.Column(db.Boolean, default=False)
 
     session = db.relationship("ChatSession", backref=db.backref("messages", lazy="dynamic"))
+
+class CompanyStock(db.Model):
+    __tablename__ = "company_stock"
+
+    id = db.Column(db.Integer, primary_key=True)
+    warehouse = db.Column(db.String(120), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)     # e.g., Wheat / Maize / Paddy
+    quantity = db.Column(db.Numeric(14, 3), nullable=False)  # store in kg or unit you prefer
+    quality = db.Column(db.String(20), nullable=False)       # e.g., Good / BD
+    average_price = db.Column(db.Numeric(14, 2), nullable=False)  # per unit price
+
+    # Computed at DB level: total_price = quantity * average_price
+    total_price = column_property(quantity * average_price)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<CompanyStock {self.id} {self.warehouse} {self.commodity}>"
+
