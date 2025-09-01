@@ -15,34 +15,91 @@
 </head>
 <body>
 <div class="container dashboard-container position-relative">
-    <a href="/dashboard" class="btn btn-outline-dark back-btn">← Back to Dashboard</a>
-    <h2 class="mb-4">Company Finance Dashboard</h2>
-    <div>
-        <a href="/company/add-company-loan" class="btn btn-primary module-btn">Add Company Loan</a>
-        <a href="/company/display-company-loan" class="btn btn-info module-btn">Display Company Loan</a>
-        <a href="/company/add-loan-repayment" class="btn btn-success module-btn">Add Loan Repayment</a>
-        <a href="/company/list-loan-repayment" class="btn btn-warning module-btn">Display Loan Repayment</a>
-        <a href="/company/loan-due" class="btn btn-warning module-btn">Loan Due on Company</a>
-        <a href="/company/interest-payable" class="btn btn-outline-danger module-btn">Interest Payable</a>
-        <a href="/company/interest-receivable" class="btn btn-outline-success module-btn">Interest Receivable</a>
-        <a href="/company/company-stock" class="btn btn-outline-primary module-btn">Company Stock</a>
-        <a href="/company/breakeven-price" class="btn btn-secondary module-btn">Breakeven Price Calculator</a>
-        <a href="/company/rental_due" class="btn btn-dark module-btn">Rental Calculator</a>
-        <a href="/company/final-report" class="btn btn-warning module-btn">Final Report</a>
-        <a href="/company/leftover-stock" class="btn btn-outline-dark module-btn">Leftover Stock</a>
-        <a href="/company/add-expenditure" class="btn btn-outline-warning module-btn">Expenditure</a>
-        <a href="/company/profit-loss" class="btn btn-outline-info module-btn">Profit/Loss Calculator</a>
+  <a href="/dashboard" class="btn btn-outline-dark back-btn mb-3">← Back to Dashboard</a>
+  <h2 class="mb-4">Company Finance Dashboard</h2>
 
-        <!-- New: Residual Earning buttons -->
-        <a href="/company/residual-earning/add" class="btn btn-primary module-btn">Add Residual Earning</a>
-        <a href="/company/residual-earnings" class="btn btn-info module-btn">Display Residual Earnings</a>
-        <a href="{{ url_for('invoice.new_invoice') }}" class="btn btn-outline-dark module-btn">Create Invoice (PDF)</a>
-        <a href="{{ url_for('invoice.list_invoices') }}" class="btn btn-outline-dark module-btn">List Invoices</a>
-
+  <div class="row g-3">
+    <!-- Company Loan -->
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/add-company-loan" class="btn btn-primary w-100">Add Company Loan</a>
     </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/display-company-loan" class="btn btn-info w-100">Display Company Loan</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/add-loan-repayment" class="btn btn-success w-100">Add Loan Repayment</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/list-loan-repayment" class="btn btn-warning w-100">Display Loan Repayment</a>
+    </div>
+
+    <!-- Loan & Interest -->
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/loan-due" class="btn btn-warning w-100">Loan Due on Company</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/interest-payable" class="btn btn-outline-danger w-100">Interest Payable</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/interest-receivable" class="btn btn-outline-success w-100">Interest Receivable</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="{{ url_for('company_stock.index') }}" class="btn btn-outline-primary w-100">Company Stock</a>
+    </div>
+
+    <!-- Calculators & Reports -->
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/breakeven-price" class="btn btn-secondary w-100">Breakeven Price Calculator</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/rental_due" class="btn btn-dark w-100">Rental Calculator</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/final-report" class="btn btn-warning w-100">Final Report</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/leftover-stock" class="btn btn-outline-dark w-100">Leftover Stock</a>
+    </div>
+
+    <!-- Other Finance -->
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/add-expenditure" class="btn btn-outline-warning w-100">Expenditure</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/profit-loss" class="btn btn-outline-info w-100">Profit/Loss Calculator</a>
+    </div>
+
+    <!-- Residual Earnings -->
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/residual-earning/add" class="btn btn-primary w-100">Add Residual Earning</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="/company/residual-earnings" class="btn btn-info w-100">Display Residual Earnings</a>
+    </div>
+
+    <!-- Invoices -->
+    <div class="col-md-3 col-sm-6">
+      <a href="{{ url_for('invoice.new_invoice') }}" class="btn btn-outline-dark w-100">Create Invoice (PDF)</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="{{ url_for('invoice.list_invoices') }}" class="btn btn-outline-dark w-100">List Invoices</a>
+    </div>
+
+    <!-- Ledgers -->
+    <div class="col-md-3 col-sm-6">
+      <a href="{{ url_for('loan_ledger.index') }}" class="btn btn-outline-primary w-100">📒 Loan Ledger</a>
+    </div>
+    <div class="col-md-3 col-sm-6">
+      <a href="{{ url_for('company_ledger.list_ledger') }}" class="btn btn-primary w-100">Company Ledger</a>
+    </div>
+  </div>
 </div>
+
 </body>
 {% include "_admin_socket_alert.html" %}
 </html>
+
+
+
 
 
