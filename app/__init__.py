@@ -279,6 +279,11 @@ def create_app() -> Flask:
     except Exception as e:
         app.logger.exception("company.profit_loss failed: %s", e)
     try:
+        from app.routes.company import company_stock
+        app.register_blueprint(company_stock.bp)
+    except Exception as e:
+        app.logger.exception("company.company_stock failed: %s", e)
+    try:
         from app.routes.company import final_report
         app.register_blueprint(final_report.bp)
     except Exception as e:
