@@ -27,3 +27,13 @@ logs/
 
 # Alembic cache
 migrations/**/__pycache__/
+.venv/
+__pycache__/
+*.pyc
+.instance/
+*.log
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store

@@ -43,10 +43,9 @@
     <div class="col-md-3 col-sm-6">
       <a href="/company/interest-receivable" class="btn btn-outline-success w-100">Interest Receivable</a>
     </div>
-    <div class="col-md-3 col-sm-6">
-      <a href="{{ url_for('company_stock.index') }}" class="btn btn-outline-primary w-100">Company Stock</a>
-    </div>
-
+<div class="col-md-3 col-sm-6">
+<a href="/company/stock/" class="btn btn-outline-primary w-100">Company Stock</a>
+</div>
     <!-- Calculators & Reports -->
     <div class="col-md-3 col-sm-6">
       <a href="/company/breakeven-price" class="btn btn-secondary w-100">Breakeven Price Calculator</a>
@@ -85,13 +84,6 @@
       <a href="{{ url_for('invoice.list_invoices') }}" class="btn btn-outline-dark w-100">List Invoices</a>
     </div>
 
-    <!-- Ledgers -->
-    <div class="col-md-3 col-sm-6">
-      <a href="{{ url_for('loan_ledger.index') }}" class="btn btn-outline-primary w-100">📒 Loan Ledger</a>
-    </div>
-    <div class="col-md-3 col-sm-6">
-      <a href="{{ url_for('company_ledger.list_ledger') }}" class="btn btn-primary w-100">Company Ledger</a>
-    </div>
   </div>
 </div>
 

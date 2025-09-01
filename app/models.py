@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from sqlalchemy.orm import column_property
 from app import db, login_manager
 
 
@@ -366,6 +366,7 @@ class ChatMessage(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     is_private = db.Column(db.Boolean, default=False)
+
 
     session = db.relationship("ChatSession", backref=db.backref("messages", lazy="dynamic"))
 
