@@ -1,6 +1,6 @@
 # app/models.py
 from datetime import date, datetime
-
+from sqlalchemy.orm import column_property
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
