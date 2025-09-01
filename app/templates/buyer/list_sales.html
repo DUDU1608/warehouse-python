@@ -8,7 +8,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background: #f7f8fb; }
-    /* Toggle helpers */
+    /* Inline edit toggles */
     .cell-edit { display: none; }
     tr.editing .cell-view { display: none; }
     tr.editing .cell-edit { display: block; }
@@ -24,7 +24,7 @@
     <a class="navbar-brand fw-bold" href="#">Buyer Module</a>
     <div class="ms-auto d-flex gap-2">
       <a class="btn btn-outline-secondary btn-sm" href="/buyer/dashboard">← Buyer Dashboard</a>
-      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('sales.add_sale') }}">Add Sale</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('sales.add_sale_form') }}">Add Sale</a>
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('buyer.add_buyer') }}">Add Buyer</a>
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('payments.add_payment') }}">Add Receipt</a>
     </div>
@@ -46,11 +46,12 @@
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h3 class="fw-bold">📑 Sales</h3>
     <div class="d-flex gap-2">
-      <a class="btn btn-success" href="{{ url_for('sales.add_sale') }}">➕ Add Sale</a>
+      <a class="btn btn-success" href="{{ url_for('sales.add_sale_form') }}">➕ Add Sale</a>
       <a class="btn btn-outline-secondary" href="/buyer/dashboard">← Buyer Dashboard</a>
     </div>
   </div>
 
+  <!-- Filters -->
   <form method="GET" class="row g-2 mb-3">
     <div class="col-md-3">
       <label class="form-label">Buyer</label>
@@ -63,6 +64,19 @@
         {% endfor %}
       </select>
     </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Stockist</label>
+      <select name="stockist_name" class="form-select">
+        <option value="">All</option>
+        {% for s in stockists %}
+        <option value="{{ s.name }}" {% if request.args.get('stockist_name') == s.name %}selected{% endif %}>
+          {{ s.name }}{% if s.mobile %} — {{ s.mobile }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
     <div class="col-md-2">
       <label class="form-label">Commodity</label>
       <select name="commodity" class="form-select">
@@ -72,6 +86,7 @@
         {% endfor %}
       </select>
     </div>
+
     <div class="col-md-2">
       <label class="form-label">Quality</label>
       <select name="quality" class="form-select">
@@ -80,19 +95,23 @@
         <option value="BD" {% if request.args.get('quality')=='BD' %}selected{% endif %}>BD</option>
       </select>
     </div>
+
     <div class="col-md-2">
       <label class="form-label">Warehouse</label>
       <input name="warehouse" class="form-control" value="{{ request.args.get('warehouse','') }}">
     </div>
-    <div class="col-md-1">
+
+    <div class="col-md-2">
       <label class="form-label">From</label>
       <input type="date" name="from" value="{{ request.args.get('from','') }}" class="form-control">
     </div>
-    <div class="col-md-1">
+
+    <div class="col-md-2">
       <label class="form-label">To</label>
       <input type="date" name="to" value="{{ request.args.get('to','') }}" class="form-control">
     </div>
-    <div class="col-md-1 d-flex align-items-end">
+
+    <div class="col-md-2 d-flex align-items-end">
       <button class="btn btn-outline-primary w-100">Go</button>
     </div>
   </form>
@@ -101,9 +120,20 @@
     <table class="table table-striped align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th>Date</th><th>RST No</th><th>Buyer</th><th>Mobile</th><th>Commodity</th>
-          <th>Qty (kg)</th><th>Rate</th><th>Handling</th><th>Cost</th><th>Net Cost</th>
-          <th>Quality</th><th>Warehouse</th><th class="text-end">Actions</th>
+          <th>Date</th>
+          <th>RST No</th>
+          <th>Buyer</th>
+          <th>Mobile</th>
+          <th>Stockist</th> <!-- NEW -->
+          <th>Commodity</th>
+          <th>Qty (kg)</th>
+          <th>Rate</th>
+          <th>Handling</th>
+          <th>Cost</th>
+          <th>Net Cost</th>
+          <th>Quality</th>
+          <th>Warehouse</th>
+          <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -127,6 +157,23 @@
             <!-- Buyer & Mobile (not editable here) -->
             <td>{{ s.buyer_name }}</td>
             <td class="small text-muted">{{ s.mobile }}</td>
+
+            <!-- Stockist (editable) -->
+            <td>
+              <div class="cell-view">
+                {{ s.stockist_name or '—' }}
+              </div>
+              <div class="cell-edit">
+                <select name="stockist_name" class="form-select form-select-sm">
+                  <option value="">—</option>
+                  {% for st in stockists %}
+                  <option value="{{ st.name }}" {% if s.stockist_name==st.name %}selected{% endif %}>
+                    {{ st.name }}{% if st.mobile %} — {{ st.mobile }}{% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </td>
 
             <!-- Commodity -->
             <td>
@@ -166,14 +213,14 @@
 
             <!-- Cost (computed) -->
             <td class="fw-semibold">
-              <span class="cell-view">₹ {{ '%.2f'|format(s.cost) }}</span>
-              <span class="cell-edit live-cost">₹ {{ '%.2f'|format(s.cost) }}</span>
+              <span class="cell-view">&#8377; {{ '%.2f'|format(s.cost) }}</span>
+              <span class="cell-edit live-cost">&#8377; {{ '%.2f'|format(s.cost) }}</span>
             </td>
 
             <!-- Net Cost (computed) -->
             <td class="fw-semibold">
-              <span class="cell-view">₹ {{ '%.2f'|format(s.net_cost) }}</span>
-              <span class="cell-edit live-net">₹ {{ '%.2f'|format(s.net_cost) }}</span>
+              <span class="cell-view">&#8377; {{ '%.2f'|format(s.net_cost) }}</span>
+              <span class="cell-edit live-net">&#8377; {{ '%.2f'|format(s.net_cost) }}</span>
             </td>
 
             <!-- Quality -->
@@ -208,7 +255,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="13" class="text-center text-muted py-4">No sales found.</td></tr>
+        <tr><td colspan="14" class="text-center text-muted py-4">No sales found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -217,38 +264,37 @@
 
 <script>
 (function(){
-  // Toggle a row into edit mode
+  // Enter edit mode: swap cells, hook live calculators
   function enterEdit(tr){
     tr.classList.add('editing');
-    // attach live calc
     const qty = tr.querySelector('.qty');
     const rate = tr.querySelector('.rate');
     const handling = tr.querySelector('.handling');
     const $cost = tr.querySelector('.live-cost');
     const $net = tr.querySelector('.live-net');
     function recalc(){
-      const q = parseFloat(qty.value || 0);
-      const r = parseFloat(rate.value || 0);
-      const h = parseFloat(handling.value || 0);
+      const q = parseFloat(qty?.value || 0);
+      const r = parseFloat(rate?.value || 0);
+      const h = parseFloat(handling?.value || 0);
       const cost = q*r;
       const net  = cost + h;
       if ($cost) $cost.textContent = "₹ " + cost.toFixed(2);
       if ($net)  $net.textContent  = "₹ " + net.toFixed(2);
     }
-    if (qty) qty.addEventListener('input', recalc);
-    if (rate) rate.addEventListener('input', recalc);
-    if (handling) handling.addEventListener('input', recalc);
+    qty && qty.addEventListener('input', recalc);
+    rate && rate.addEventListener('input', recalc);
+    handling && handling.addEventListener('input', recalc);
     recalc();
   }
 
+  // Exit edit mode (optionally reset)
   function exitEdit(tr){
     tr.classList.remove('editing');
-    // reset inputs to original values (from HTML) when cancelling
-    const form = tr.querySelector('form.row-form');
-    if (form && tr.dataset.cancelReset === "1"){
-      form.reset();
+    if (tr.dataset.cancelReset === "1"){
+      const form = tr.querySelector('form.row-form');
+      if (form) form.reset();
       tr.dataset.cancelReset = "0";
-      // also reset computed labels
+      // Recompute shown values after reset
       const qty = tr.querySelector('.qty');
       const rate = tr.querySelector('.rate');
       const handling = tr.querySelector('.handling');
@@ -262,25 +308,19 @@
   }
 
   document.querySelectorAll('tr[data-row]').forEach(function(tr){
-    // Edit button
     const editBtn = tr.querySelector('.btn-edit');
-    if (editBtn){
-      editBtn.addEventListener('click', function(){ enterEdit(tr); });
-    }
-    // Cancel button
+    editBtn && editBtn.addEventListener('click', function(){ enterEdit(tr); });
+
     const cancelBtn = tr.querySelector('.btn-cancel');
-    if (cancelBtn){
-      cancelBtn.addEventListener('click', function(){
-        tr.dataset.cancelReset = "1";
-        exitEdit(tr);
-      });
-    }
-    // Save button (submits form as-is)
+    cancelBtn && cancelBtn.addEventListener('click', function(){
+      tr.dataset.cancelReset = "1";
+      exitEdit(tr);
+    });
+
+    // Save submits the form; backend recomputes authoritative values.
     const saveBtn = tr.querySelector('.btn-save');
     if (saveBtn){
-      saveBtn.addEventListener('click', function(){
-        // let server recompute; no special handling needed
-      });
+      // no JS needed; default type=submit
     }
   });
 })();
