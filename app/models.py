@@ -218,7 +218,6 @@ class Buyer(db.Model):
 
 class BuyerSale(db.Model):
     __tablename__ = "buyer_sale"
-
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, index=True)
     rst_no = db.Column(db.String(50), nullable=False)
@@ -232,10 +231,13 @@ class BuyerSale(db.Model):
     cost = db.Column(db.Float, nullable=False)
     handling_charge = db.Column(db.Float, default=0.0)
     net_cost = db.Column(db.Float, nullable=False)  # cost + handling
-    quality = db.Column(db.String(20))              # Good / BD
+    quality = db.Column(db.String(20))  # Good / BD
+
+    # 👇 NEW: stockist chosen for this sale (drives the auto StockExit)
+    stockist_name = db.Column(db.String(100), index=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-
+    
 class BuyerPayment(db.Model):
     __tablename__ = "buyer_payment"
 
