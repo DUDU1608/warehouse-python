@@ -37,3 +37,12 @@ __pycache__/
 .idea/
 .vscode/
 .DS_Store
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+*.log
+.DS_Store
+.idea/
+.vscode/
