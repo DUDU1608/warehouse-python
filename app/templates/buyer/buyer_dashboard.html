@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons (optional) -->
+  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     body { background: #f7f8fb; }
@@ -14,8 +14,7 @@
     .dash-card:hover { transform: translateY(-2px); box-shadow: 0 0.75rem 1.25rem rgba(0,0,0,.07); }
     .icon-pill {
       width: 44px; height: 44px; display: grid; place-items: center;
-      border-radius: 12px; background: #eef2ff; color: #3b5bdb;
-      font-size: 1.25rem;
+      border-radius: 12px; background: #eef2ff; color: #3b5bdb; font-size: 1.25rem;
     }
   </style>
 </head>
@@ -24,15 +23,12 @@
   <div class="container">
     <span class="navbar-brand fw-bold">Buyer Module</span>
     <div class="ms-auto">
-      <a href="/dashboard" class="btn btn-outline-secondary btn-sm">
-        ← Main Dashboard
-      </a>
+      <a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Main Dashboard</a>
     </div>
   </div>
 </nav>
 
 <div class="container py-4">
-  <!-- Flash messages -->
   {% with msgs = get_flashed_messages(with_categories=true) %}
     {% if msgs %}
       {% for cat, msg in msgs %}
@@ -72,7 +68,7 @@
             <div class="icon-pill me-2"><i class="bi bi-people"></i></div>
             <h5 class="card-title mb-0">Display Buyers</h5>
           </div>
-          <p class="text-muted flex-grow-1">View, edit (inline), and delete buyer records.</p>
+          <p class="text-muted flex-grow-1">View, inline-edit, and delete buyer records.</p>
           <a href="{{ url_for('buyer.list_buyer') }}" class="btn btn-primary mt-2">Open</a>
         </div>
       </div>
@@ -87,7 +83,7 @@
             <h5 class="card-title mb-0">Add Sales</h5>
           </div>
           <p class="text-muted flex-grow-1">Record a sale: RST No, quantity, rate, quality, etc.</p>
-          <a href="{{ url_for('sales.add_sale') }}" class="btn btn-primary mt-2">Open</a>
+          <a href="{{ url_for('sales.add_sale_form') }}" class="btn btn-primary mt-2">Open</a>
         </div>
       </div>
     </div>
@@ -100,7 +96,7 @@
             <div class="icon-pill me-2"><i class="bi bi-table"></i></div>
             <h5 class="card-title mb-0">Display Sales</h5>
           </div>
-          <p class="text-muted flex-grow-1">Filter by buyer, date, commodity & quality; edit/delete rows.</p>
+          <p class="text-muted flex-grow-1">Filter by buyer, date, commodity &amp; quality; edit/delete rows.</p>
           <a href="{{ url_for('sales.list_sales') }}" class="btn btn-primary mt-2">Open</a>
         </div>
       </div>
@@ -114,7 +110,7 @@
             <div class="icon-pill me-2"><i class="bi bi-cash-coin"></i></div>
             <h5 class="card-title mb-0">Add Payment Receipt</h5>
           </div>
-          <p class="text-muted flex-grow-1">Record buyer payment with commodity, warehouse & ref no.</p>
+          <p class="text-muted flex-grow-1">Record buyer payment with commodity, warehouse &amp; ref no.</p>
           <a href="{{ url_for('payments.add_payment') }}" class="btn btn-primary mt-2">Open</a>
         </div>
       </div>
@@ -136,13 +132,13 @@
   </div>
 </div>
 
-<!-- Keyboard shortcuts (optional): 1..6 open cards -->
+<!-- Keyboard shortcuts: 1..6 open cards in order -->
 <script>
 document.addEventListener('keydown', (e) => {
   if (!/^[1-6]$/.test(e.key)) return;
-  const idx = parseInt(e.key,10);
+  const idx = parseInt(e.key, 10);
   const links = document.querySelectorAll('.card .btn.btn-primary');
-  if (links[idx-1]) links[idx-1].click();
+  if (links[idx - 1]) links[idx - 1].click();
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
