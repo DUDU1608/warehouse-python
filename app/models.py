@@ -135,15 +135,21 @@ class StockExit(db.Model):
     stockist_name = db.Column(db.String(100), nullable=False)
     mobile = db.Column(db.String(20))
     commodity = db.Column(db.String(30), nullable=False)
+
     quantity = db.Column(db.Float, nullable=False)
-    reduction = db.Column(db.Float, nullable=False)
+    reduction = db.Column(db.Float, nullable=False, default=0.0)
     net_qty = db.Column(db.Float, nullable=False)
+
+    actual_qty = db.Column(db.Float, nullable=True)         # new
+    difference = db.Column(db.Float, nullable=True)         # new
+    rate_of_difference = db.Column(db.Float, nullable=True) # new
+    differential_amount = db.Column(db.Float, nullable=True) # new
+
     rate = db.Column(db.Float, nullable=False)
     cost = db.Column(db.Float, nullable=False)
     handling = db.Column(db.Float, nullable=False)
     net_cost = db.Column(db.Float, nullable=False)
     quality = db.Column(db.String(30))
-
 
 # ---------------------------
 # Financing (stockist-level)
