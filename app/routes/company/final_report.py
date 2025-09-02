@@ -384,7 +384,8 @@ def final_report():
             out_q = out_q.filter(func.upper(StockExit.quality) == func.upper(quality))
         actual_qty = _sum_scalar(out_q)  # KG
 
-        diff_qty = max(0.0, net_qty - actual_qty)  # as per instruction
+        diff_qty = net_qty - actual_qty
+
         diff_rate = _parse_float(diff_rate_str, 0.0)
         diff_amount = diff_qty * diff_rate
 
