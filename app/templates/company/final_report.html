@@ -1,28 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Final Report</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
-    body { background: #f5f8fb; }
-    .card { border-radius: 12px; box-shadow: 0 2px 14px rgba(0,0,0,.06); }
-    .form-label { font-weight: 600; color: #284b9b; }
-    .kv-table th { width: 42%; }
-    .kv-table td, .kv-table th { padding: .5rem .75rem; vertical-align: top; }
-    .kv-table tr:nth-child(even) { background: #fafbff; }
+    :root {
+      --card-radius: 12px;
+    }
+    body { background: #f6f8fb; }
+    .page-title { color: #123a76; font-weight: 700; letter-spacing: .2px; }
+    .card {
+      border-radius: var(--card-radius);
+      border: 1px solid #e7ebf3;
+      box-shadow: 0 4px 14px rgba(16,35,70,.06);
+    }
+
+    /* Form compactness */
+    .form-label { font-weight: 600; color: #1f3b78; }
+    .form-text { font-size: .8rem; }
+
+    /* Compact, clean key–value table */
+    .kv-table { font-size: .92rem; }
+    .kv-table th, .kv-table td {
+      padding: .45rem .6rem !important;
+      vertical-align: top;
+      border-color: #dfe7f2 !important;
+    }
+    .kv-table th {
+      width: 46%;
+      background: #f9fbff;
+      color: #1c2b52;
+      font-weight: 600;
+    }
+    .kv-table tr:nth-child(even) td { background: #fcfdff; }
+    .kv-table .lead-value {
+      font-weight: 700;
+    }
+    .text-neg { color: #b3002a !important; }
+    .text-pos { color: #0b7d38 !important; }
+
+    .stat-pill {
+      display: inline-block;
+      padding: .15rem .5rem;
+      font-size: .82rem;
+      border-radius: 999px;
+      background: #eef3ff;
+      border: 1px solid #dfe7ff;
+      color: #173a8a;
+      font-weight: 600;
+    }
+
+    /* Print styles */
     @media print {
-      .no-print { display: none !important; }
       body { background: #fff; }
-      .card { box-shadow: none; border: 1px solid #000; }
-      .kv-table td, .kv-table th { border: 1px solid #000 !important; }
+      .no-print { display: none !important; }
+      .container { max-width: 100% !important; }
+      .card {
+        box-shadow: none !important;
+        border: 1px solid #000 !important;
+      }
+      .kv-table th, .kv-table td {
+        border: 1px solid #000 !important;
+        background: #fff !important;
+      }
     }
   </style>
 </head>
 <body>
 <div class="container py-4">
-  <h3 class="mb-3 text-primary">📊 Final Report</h3>
-  <a href="{{ url_for('company_dashboard.finance_dashboard') }}" class="btn btn-outline-secondary mb-3 no-print">← Back to Dashboard</a>
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h3 class="page-title mb-0">📊 Final Report</h3>
+    <a href="{{ url_for('company_dashboard.finance_dashboard') }}" class="btn btn-outline-secondary btn-sm no-print">← Back</a>
+  </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -35,11 +88,12 @@
     {% endif %}
   {% endwith %}
 
-  <div class="card p-3 mb-4">
+  <!-- FORM -->
+  <div class="card p-3 mb-3">
     <form method="POST" class="row g-3">
-      <div class="col-md-3">
+      <div class="col-md-3 col-6">
         <label class="form-label">Stockist <span class="text-danger">*</span></label>
-        <select name="stockist" class="form-select" required>
+        <select name="stockist" class="form-select form-select-sm" required>
           <option value="">Select</option>
           {% for s in stockists %}
             <option value="{{ s }}" {% if input_stockist==s %}selected{% endif %}>{{ s }}</option>
@@ -47,14 +101,14 @@
         </select>
       </div>
 
-      <div class="col-md-3">
+      <div class="col-md-3 col-6">
         <label class="form-label">Date <span class="text-danger">*</span></label>
-        <input type="date" name="date" class="form-control" value="{{ input_date or '' }}" required>
+        <input type="date" name="date" class="form-control form-control-sm" value="{{ input_date or '' }}" required>
       </div>
 
-      <div class="col-md-2">
+      <div class="col-md-2 col-6">
         <label class="form-label">Commodity</label>
-        <select name="commodity" class="form-select">
+        <select name="commodity" class="form-select form-select-sm">
           <option value="">All</option>
           {% for c in commodities %}
             <option value="{{ c }}" {% if input_commodity==c %}selected{% endif %}>{{ c }}</option>
@@ -62,9 +116,9 @@
         </select>
       </div>
 
-      <div class="col-md-2">
+      <div class="col-md-2 col-6">
         <label class="form-label">Warehouse</label>
-        <select name="warehouse" class="form-select">
+        <select name="warehouse" class="form-select form-select-sm">
           <option value="">All</option>
           {% for w in warehouses %}
             <option value="{{ w }}" {% if input_warehouse==w %}selected{% endif %}>{{ w }}</option>
@@ -72,86 +126,122 @@
         </select>
       </div>
 
-      <div class="col-md-2">
+      <div class="col-md-2 col-6">
         <label class="form-label">Quality</label>
-        <select name="quality" class="form-select">
+        <select name="quality" class="form-select form-select-sm">
           <option value="" {% if not input_quality %}selected{% endif %}>All</option>
           <option value="Good" {% if input_quality=='Good' %}selected{% endif %}>Good</option>
           <option value="BD" {% if input_quality=='BD' %}selected{% endif %}>BD</option>
         </select>
       </div>
 
-      <div class="col-12"><hr class="mt-0"></div>
+      <div class="col-12"><hr class="my-2"></div>
 
       <!-- Split pricing -->
-      <div class="col-md-3">
-        <label class="form-label">Rate (Good) ₹/kg</label>
-        <input type="number" step="0.01" name="rate_good" class="form-control" value="{{ input_rate_good or '' }}" placeholder="e.g. 23.50">
+      <div class="col-md-3 col-6">
+        <label class="form-label mb-1">Rate (Good) ₹/kg</label>
+        <input type="number" step="0.01" name="rate_good" class="form-control form-control-sm" value="{{ input_rate_good or '' }}" placeholder="23.50">
       </div>
 
-      <div class="col-md-3">
-        <label class="form-label">Rate (BD) ₹/kg</label>
-        <input type="number" step="0.01" name="rate_bd" class="form-control" value="{{ input_rate_bd or '' }}" placeholder="e.g. 21.00">
+      <div class="col-md-3 col-6">
+        <label class="form-label mb-1">Rate (BD) ₹/kg</label>
+        <input type="number" step="0.01" name="rate_bd" class="form-control form-control-sm" value="{{ input_rate_bd or '' }}" placeholder="21.00">
       </div>
 
-      <div class="col-md-3">
-        <label class="form-label">BD Quantity (kg)</label>
-        <input type="number" step="0.001" name="bd_qty" class="form-control" value="{{ input_bd_qty or '' }}" placeholder="e.g. 12000">
+      <div class="col-md-3 col-6">
+        <label class="form-label mb-1">BD Quantity (kg)</label>
+        <input type="number" step="0.001" name="bd_qty" class="form-control form-control-sm" value="{{ input_bd_qty or '' }}" placeholder="12000">
         <div class="form-text">Only this quantity uses BD rate; rest uses Good rate.</div>
       </div>
 
-      <!-- NEW: Differential Quantity Rate -->
-      <div class="col-md-3">
-        <label class="form-label">Differential Quantity Rate (₹/kg)</label>
-        <input type="number" step="0.01" name="diff_rate" class="form-control" value="{{ input_diff_rate or '' }}" placeholder="e.g. 0.50">
+      <div class="col-md-3 col-6">
+        <label class="form-label mb-1">Differential Quantity Rate (₹/kg)</label>
+        <input type="number" step="0.01" name="diff_rate" class="form-control form-control-sm" value="{{ input_diff_rate or '' }}" placeholder="0.50">
         <div class="form-text">Applied to (Net Qty − Actual Qty from Stock Exit).</div>
       </div>
 
       <div class="col-12 d-flex justify-content-end">
-        <button class="btn btn-primary no-print">Generate</button>
+        <button class="btn btn-primary btn-sm px-3 no-print">Generate</button>
       </div>
     </form>
   </div>
 
   {% if result %}
+  <!-- RESULTS -->
   <div class="card p-3">
-    <!-- Top-down, two-column table for easy printing -->
-    <div class="table-responsive">
-      <table class="table kv-table table-bordered mb-0">
-        <tbody>
-          <!-- Quantities -->
-          <tr><th>Total Quantity (kg)</th><td>{{ result.total_qty }}</td></tr>
-          <tr><th>Reduction (kg)</th><td>{{ result.reduction }}</td></tr>
-          <tr><th>Net Quantity (kg)</th><td>{{ result.net_qty }}</td></tr>
-          <tr><th>Actual Quantity from Stock Exit (kg)</th><td>{{ result.actual_qty }}</td></tr>
-          <tr><th>Differential Quantity (kg) = Net − Actual</th><td>{{ result.diff_qty }}</td></tr>
+    <!-- Quick headline stats -->
+    <div class="d-flex flex-wrap gap-2 mb-2">
+      <span class="stat-pill">Net Qty: {{ "{:,.2f}".format(result.net_qty) }} kg</span>
+      <span class="stat-pill">Actual Qty: {{ "{:,.2f}".format(result.actual_qty) }} kg</span>
+      {% set dq = result.diff_qty %}
+      <span class="stat-pill {{ 'text-neg' if dq < 0 else 'text-pos' if dq > 0 else '' }}">
+        Δ Qty: {{ "{:,.2f}".format(dq) }} kg
+      </span>
+      <span class="stat-pill">Due (Final): ₹{{ "{:,.2f}".format(result.final_payment_due) }}</span>
+    </div>
 
-          <!-- Differential -->
-          <tr><th>Differential Quantity Rate (₹/kg)</th><td>{{ result.diff_rate }}</td></tr>
-          <tr><th>Differential Amount (₹)</th><td>{{ result.diff_amount }}</td></tr>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered kv-table mb-0">
+        <tbody>
+
+          <!-- Quantities -->
+          <tr><th>Total Quantity (kg)</th><td>{{ "{:,.2f}".format(result.total_qty) }}</td></tr>
+          <tr><th>Reduction (kg)</th><td>{{ "{:,.2f}".format(result.reduction) }}</td></tr>
+          <tr><th>Net Quantity (kg)</th>
+              <td class="lead-value">{{ "{:,.2f}".format(result.net_qty) }}</td></tr>
+
+          <!-- Actual & Differential -->
+          <tr><th>Actual Quantity from Stock Exit (kg)</th>
+              <td>{{ "{:,.2f}".format(result.actual_qty) }}</td></tr>
+          <tr>
+            <th>Differential Quantity (kg) = Net − Actual</th>
+            {% set dq = result.diff_qty %}
+            <td class="lead-value {{ 'text-neg' if dq < 0 else 'text-pos' if dq > 0 else '' }}">
+              {{ "{:,.2f}".format(dq) }}
+            </td>
+          </tr>
+          <tr><th>Differential Quantity Rate (₹/kg)</th><td>{{ "{:,.2f}".format(result.diff_rate) }}</td></tr>
+          <tr>
+            <th>Differential Amount (₹)</th>
+            {% set da = result.diff_amount %}
+            <td class="{{ 'text-neg' if da < 0 else '' }}">{{ "{:,.2f}".format(da) }}</td>
+          </tr>
 
           <!-- Split pricing -->
-          <tr><th>BD Quantity (kg)</th><td>{{ result.bd_qty }}</td></tr>
-          <tr><th>Good Quantity (kg)</th><td>{{ result.good_qty }}</td></tr>
-          <tr><th>Rate Good (₹/kg)</th><td>{{ result.rate_good }}</td></tr>
-          <tr><th>Rate BD (₹/kg)</th><td>{{ result.rate_bd }}</td></tr>
-          <tr><th>Cost Good (₹)</th><td>{{ result.cost_good }}</td></tr>
-          <tr><th>Cost BD (₹)</th><td>{{ result.cost_bd }}</td></tr>
-          <tr><th>Total Cost (₹)</th><td>{{ result.total_cost }}</td></tr>
+          <tr><th>BD Quantity (kg)</th><td>{{ "{:,.2f}".format(result.bd_qty) }}</td></tr>
+          <tr><th>Good Quantity (kg)</th><td>{{ "{:,.2f}".format(result.good_qty) }}</td></tr>
+          <tr><th>Rate Good (₹/kg)</th><td>{{ "{:,.2f}".format(result.rate_good) }}</td></tr>
+          <tr><th>Rate BD (₹/kg)</th><td>{{ "{:,.2f}".format(result.rate_bd) }}</td></tr>
+          <tr><th>Cost Good (₹)</th><td>{{ "{:,.2f}".format(result.cost_good) }}</td></tr>
+          <tr><th>Cost BD (₹)</th><td>{{ "{:,.2f}".format(result.cost_bd) }}</td></tr>
+          <tr><th>Total Cost (₹)</th><td class="lead-value">{{ "{:,.2f}".format(result.total_cost) }}</td></tr>
 
           <!-- Charges / Loans -->
-          <tr><th>Rental (₹)</th><td>{{ result.rental }}</td></tr>
-          <tr><th>Interest (₹)</th><td>{{ result.interest }}</td></tr>
-          <tr><th>Cash Loan (₹)</th><td>{{ result.cash_loan }}</td></tr>
-          <tr><th>Margin Loan (₹)</th><td>{{ result.margin_loan }}</td></tr>
-          <tr><th>Margin Paid (₹)</th><td>{{ result.margin_paid }}</td></tr>
+          <tr><th>Rental (₹)</th><td>{{ "{:,.2f}".format(result.rental) }}</td></tr>
+          <tr><th>Interest (₹)</th><td>{{ "{:,.2f}".format(result.interest) }}</td></tr>
+          <tr><th>Cash Loan (₹)</th><td>{{ "{:,.2f}".format(result.cash_loan) }}</td></tr>
+          <tr><th>Margin Loan (₹)</th><td>{{ "{:,.2f}".format(result.margin_loan) }}</td></tr>
+          <tr><th>Margin Paid (₹)</th><td>{{ "{:,.2f}".format(result.margin_paid) }}</td></tr>
 
           <!-- Totals -->
-          <tr><th class="fw-semibold">Net Payable (₹)</th><td class="fw-bold">{{ result.net_payable }}</td></tr>
-          <tr><th>Payment Made (₹)</th><td class="fw-bold">{{ result.payment_made }}</td></tr>
-          <tr><th>Payment Due (before Differential) (₹)</th><td class="fw-bold">{{ result.payment_due_base }}</td></tr>
-          <tr><th class="fw-semibold">Final Payment Due (₹)</th>
-              <td class="fw-bold text-danger">{{ "{:,.2f}".format(result.final_payment_due) }}</td></tr>
+          <tr>
+            <th class="fw-semibold">Net Payable (₹)</th>
+            {% set np = result.net_payable %}
+            <td class="lead-value {{ 'text-neg' if np < 0 else 'text-pos' }}">
+              {{ "{:,.2f}".format(np) }}
+            </td>
+          </tr>
+          <tr><th>Payment Made (₹)</th><td class="lead-value">{{ "{:,.2f}".format(result.payment_made) }}</td></tr>
+          <tr><th>Payment Due (before Differential) (₹)</th>
+              <td class="lead-value">{{ "{:,.2f}".format(result.payment_due_base) }}</td></tr>
+          <tr>
+            <th class="fw-semibold">Final Payment Due (₹)</th>
+            {% set fd = result.final_payment_due %}
+            <td class="lead-value {{ 'text-neg' if fd < 0 else 'text-pos' }}">
+              {{ "{:,.2f}".format(fd) }}
+            </td>
+          </tr>
+
         </tbody>
       </table>
     </div>
@@ -159,9 +249,9 @@
     <div class="mt-2 text-muted small">
       <ul class="mb-0">
         <li>Reduction is computed as 1.5% of Total Quantity for Maize.</li>
-        <li>Rent is calculated at ₹3.334/ton/day (or flat ₹800/ton/year for exception stockist) till the selected date.</li>
-        <li>Interest is daily simple interest @13.75% p.a. on outstanding (loans − margins − repayments).</li>
-        <li>Actual Quantity = sum of <code>StockExit.quantity</code> as per selected filters and date.</li>
+        <li>Rent: ₹3.334/ton/day (or flat ₹800/ton/year for exception stockist) up to selected date.</li>
+        <li>Interest: daily simple @13.75% p.a. on outstanding (loans − margins − repayments).</li>
+        <li>Actual Quantity = sum of <code>StockExit.quantity</code> as per filters/date.</li>
         <li>Differential Amount is added to Payment Due to arrive at Final Payment Due.</li>
       </ul>
     </div>
@@ -173,6 +263,6 @@
   {% endif %}
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
