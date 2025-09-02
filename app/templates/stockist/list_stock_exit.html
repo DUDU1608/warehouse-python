@@ -97,7 +97,7 @@
     <table class="table table-bordered table-striped align-middle">
       <thead class="table-dark">
       <tr>
-        <th>Date</th><th>Warehouse</th><th>Stockist Name</th><th>Mobile</th><th>Commodity</th>
+        <th>Date</th><th>RST No</th><th>Warehouse</th><th>Stockist Name</th><th>Mobile</th><th>Commodity</th>
         <th>Quantity</th><th>Reduction</th><th>Net Qty</th><th>Actual Qty</th><th>Difference</th>
         <th>Rate of Diff</th><th>Differential Amount</th>
         <th>Rate</th><th>Cost</th><th>Handling</th><th>Net Cost</th><th>Quality</th><th>Actions</th>
@@ -107,6 +107,7 @@
       {% for s in stockexits %}
       <tr>
         <td>{{ s.date.strftime('%Y-%m-%d') if s.date else '' }}</td>
+        <td>{{ s.rst_no }}</td>
         <td>{{ s.warehouse }}</td>
         <td>{{ s.stockist_name }}</td>
         <td>{{ s.mobile }}</td>
