@@ -1,67 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Stock Exit Records</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <style>
-        .btn { margin: 0 4px 6px 0; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Stock Exit Records</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f7f8fa;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .container {
+      max-width: 95%;
+    }
+    h2 {
+      font-weight: 600;
+    }
+    table {
+      font-size: 0.9rem;
+    }
+    thead.table-dark th {
+      white-space: nowrap;
+      text-align: center;
+    }
+    td {
+      text-align: center;
+      vertical-align: middle;
+    }
+    .btn {
+      margin: 0 2px;
+    }
+    .filter-box {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
 <div class="container mt-4">
-    <h2 class="mb-3 text-center">Stock Exit Records</h2>
-    <div class="d-flex justify-content-end mb-2">
-    <a href="{{ url_for('stockist_dashboard.dashboard') }}" class="btn btn-outline-dark btn-sm">← Back to Dashboard</a>
-</div>
+  <h2 class="mb-3 text-center">Stock Exit Records</h2>
 
-    <form class="row g-2 mb-3" method="get">
-        <div class="col-md-2"><input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}"></div>
-        <div class="col-md-2"><input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}"></div>
-        <div class="col-md-2"><select name="stockist_name" class="form-control"><option value="">All</option>{% for n in stockist_names %}<option value="{{ n }}" {% if request.args.get('stockist_name') == n %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
-        <div class="col-md-2"><select name="warehouse" class="form-control"><option value="">All</option>{% for w in warehouses %}<option value="{{ w }}" {% if request.args.get('warehouse') == w %}selected{% endif %}>{{ w }}</option>{% endfor %}</select></div>
-        <div class="col-md-2"><select name="commodity" class="form-control"><option value="">All</option><option>Wheat</option><option>Maize</option><option>Paddy</option></select></div>
-        <div class="col-md-2"><select name="quality" class="form-control"><option value="">All</option><option>Good</option><option>BD</option></select></div>
-        <div class="col-md-12"><button class="btn btn-primary">Filter</button> <a href="{{ url_for('stockexit.list_stock_exit') }}" class="btn btn-secondary">Reset</a></div>
-    </form>
-    <div class="mb-2">
-        <a href="{{ url_for('stockexit.export_stock_exit_excel') }}" class="btn btn-outline-success btn-sm">Export Excel</a>
-        <a href="{{ url_for('stockexit.add_stock_exit') }}" class="btn btn-outline-primary btn-sm float-end">Add Stock Exit</a>
+  <!-- Filter Form -->
+  <form class="row g-2 mb-3 filter-box" method="get">
+    <div class="col-md-2">
+      <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}">
     </div>
-    <table class="table table-bordered table-striped align-middle">
-        <thead class="table-dark">
-            <tr>
-                <th>Date</th><th>Warehouse</th><th>Stockist Name</th><th>Mobile</th><th>Commodity</th>
-                <th>Quantity</th><th>Reduction</th><th>NetQty</th><th>Rate</th><th>Cost</th>
-                <th>Handling</th><th>Net Cost</th><th>Quality</th><th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for s in stockexits %}
-            <tr>
-                <td>{{ s.date.strftime('%Y-%m-%d') if s.date else '' }}</td>
-                <td>{{ s.warehouse }}</td>
-                <td>{{ s.stockist_name }}</td>
-                <td>{{ s.mobile }}</td>
-                <td>{{ s.commodity }}</td>
-                <td>{{ s.quantity }}</td>
-                <td>{{ s.reduction }}</td>
-                <td>{{ s.net_qty }}</td>
-                <td>{{ s.rate }}</td>
-                <td>{{ s.cost }}</td>
-                <td>{{ s.handling }}</td>
-                <td>{{ s.net_cost }}</td>
-                <td>{{ s.quality }}</td>
-                <td>
-                    <a href="{{ url_for('stockexit.edit_stock_exit', stockexit_id=s.id) }}" class="btn btn-sm btn-primary">Edit</a>
-                    <form method="POST" action="{{ url_for('stockexit.delete_stock_exit', stockexit_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this entry?');">
-                        <button class="btn btn-sm btn-danger">Delete</button>
-                    </form>
-                </td>
-            </tr>
+    <div class="col-md-2">
+      <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}">
+    </div>
+    <div class="col-md-2">
+      <select name="stockist_name" class="form-control">
+        <option value="">All Stockists</option>
+        {% for n in stockist_names %}
+          <option value="{{ n }}" {% if request.args.get('stockist_name') == n %}selected{% endif %}>{{ n }}</option>
         {% endfor %}
-        </tbody>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="warehouse" class="form-control">
+        <option value="">All Warehouses</option>
+        {% for w in warehouses %}
+          <option value="{{ w }}" {% if request.args.get('warehouse') == w %}selected{% endif %}>{{ w }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="commodity" class="form-control">
+        <option value="">All Commodities</option>
+        <option {% if request.args.get('commodity') == 'Wheat' %}selected{% endif %}>Wheat</option>
+        <option {% if request.args.get('commodity') == 'Maize' %}selected{% endif %}>Maize</option>
+        <option {% if request.args.get('commodity') == 'Paddy' %}selected{% endif %}>Paddy</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="quality" class="form-control">
+        <option value="">All Quality</option>
+        <option {% if request.args.get('quality') == 'Good' %}selected{% endif %}>Good</option>
+        <option {% if request.args.get('quality') == 'BD' %}selected{% endif %}>BD</option>
+      </select>
+    </div>
+    <div class="col-md-12">
+      <button class="btn btn-primary">Filter</button>
+      <a href="{{ url_for('stockexit.list_stock_exit') }}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+
+  <!-- Top buttons -->
+  <div class="mb-2 d-flex justify-content-between">
+    <a href="{{ url_for('stockexit.export_stock_exit_excel') }}" class="btn btn-outline-success btn-sm">Export Excel</a>
+    <a href="{{ url_for('stockexit.add_stock_exit') }}" class="btn btn-outline-primary btn-sm">+ Add Stock Exit</a>
+  </div>
+
+  <!-- Records Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+      <thead class="table-dark">
+      <tr>
+        <th>Date</th><th>Warehouse</th><th>Stockist Name</th><th>Mobile</th><th>Commodity</th>
+        <th>Quantity</th><th>Reduction</th><th>Net Qty</th><th>Actual Qty</th><th>Difference</th>
+        <th>Rate of Diff</th><th>Differential Amount</th>
+        <th>Rate</th><th>Cost</th><th>Handling</th><th>Net Cost</th><th>Quality</th><th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for s in stockexits %}
+      <tr>
+        <td>{{ s.date.strftime('%Y-%m-%d') if s.date else '' }}</td>
+        <td>{{ s.warehouse }}</td>
+        <td>{{ s.stockist_name }}</td>
+        <td>{{ s.mobile }}</td>
+        <td>{{ s.commodity }}</td>
+        <td>{{ s.quantity }}</td>
+        <td>{{ s.reduction }}</td>
+        <td>{{ s.net_qty }}</td>
+        <td>{{ s.actual_qty if s.actual_qty is not none else 'NIL' }}</td>
+        <td>{{ s.difference if s.difference is not none else 'NIL' }}</td>
+        <td>{{ s.rate_of_difference if s.rate_of_difference is not none else 'NIL' }}</td>
+        <td>{{ s.differential_amount if s.differential_amount is not none else 'NIL' }}</td>
+        <td>{{ s.rate }}</td>
+        <td>{{ s.cost }}</td>
+        <td>{{ s.handling }}</td>
+        <td>{{ s.net_cost }}</td>
+        <td>{{ s.quality }}</td>
+        <td>
+          <a href="{{ url_for('stockexit.edit_stock_exit', stockexit_id=s.id) }}" class="btn btn-sm btn-primary">Edit</a>
+          <form method="POST" action="{{ url_for('stockexit.delete_stock_exit', stockexit_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this entry?');">
+            <button class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
     </table>
+  </div>
 </div>
 </body>
 </html>
-
