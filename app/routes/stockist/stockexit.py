@@ -26,6 +26,7 @@ def add_stock_exit():
     if request.method == 'POST':
         form = request.form
         try:
+            rst_no = form.get('rst_no', '').strip()
             quantity = float(form['quantity'])
             reduction = float(form['reduction'])
             rate = float(form['rate'])
@@ -44,6 +45,7 @@ def add_stock_exit():
 
         stock_exit = StockExit(
             date=datetime.strptime(form['date'], "%Y-%m-%d").date(),
+            rst_no=rst_no,
             warehouse=form['warehouse'],
             stockist_name=form['stockist_name'],
             mobile=form['mobile'],
@@ -125,6 +127,7 @@ def export_stock_exit_excel():
     stockexits = StockExit.query.all()
     data = [{
         'Date': s.date.strftime('%Y-%m-%d') if s.date else '',
+        'RST No': s.rst_no, 
         'Warehouse': s.warehouse,
         'Stockist Name': s.stockist_name,
         'Mobile': s.mobile,
@@ -158,6 +161,7 @@ def edit_stock_exit(stockexit_id):
     if request.method == 'POST':
         form = request.form
         stockexit.date = datetime.strptime(form['date'], "%Y-%m-%d").date()
+        stockexit.rst_no = request.form.get('rst_no', '').strip()
         stockexit.warehouse = form['warehouse']
         stockexit.stockist_name = form['stockist_name']
         stockexit.mobile = form['mobile']
