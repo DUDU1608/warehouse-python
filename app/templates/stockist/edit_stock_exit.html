@@ -48,7 +48,10 @@
             <input name="date" type="date" class="form-control" required
                    value="{{ stockexit.date.strftime('%Y-%m-%d') if stockexit.date else '' }}">
         </div>
-
+        <div class="mb-3">
+          <label class="form-label">RST No</label>
+          <input name="rst_no" class="form-control" placeholder="Enter RST No" required>
+        </div>
         <div class="mb-3">
             <label class="form-label">Warehouse</label>
             <input name="warehouse" class="form-control" required value="{{ stockexit.warehouse }}">
