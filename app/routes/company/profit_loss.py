@@ -248,3 +248,119 @@ def calculate_financing_activity():
         "payable": payable,
         "net": round(net_financing_profit, 2)
     })
+
+# -------------------------------------------------------
+# Trading Activity (NEW) — uses breakeven up to each exit
+# -------------------------------------------------------
+def _breakeven_per_ton(commodity: str, quality: str, as_of: date) -> float:
+    """
+    Breakeven per ton up to 'as_of' for ANUNAY AGRO & given commodity/quality.
+
+    breakeven/ton = avg_purchase_price_per_ton
+                  + RENTAL_PER_TON
+                  + (avg_purchase_price_per_ton * DAILY_RATE * qty_weighted_avg_days)
+    """
+    if not commodity or not as_of:
+        return 0.0
+
+    lots = (
+        StockData.query.filter(
+            StockData.stockist_name == EXCEPTION_STOCKIST,
+            StockData.commodity == commodity,
+            StockData.quality == quality,
+            StockData.date <= as_of,
+        )
+        .order_by(StockData.date.asc())
+        .all()
+    )
+
+    total_qty_kg = 0.0
+    total_cost_rs = 0.0
+    weighted_days_sum = 0.0
+
+    for s in lots:
+        qty = float(s.quantity or 0.0)
+        if qty <= 0:
+            continue
+        cost = float(s.cost or 0.0)
+        age_days = max((as_of - s.date).days, 0)
+
+        total_qty_kg += qty
+        total_cost_rs += cost
+        weighted_days_sum += qty * age_days
+
+    if total_qty_kg <= 0:
+        return 0.0
+
+    avg_days_held = weighted_days_sum / total_qty_kg
+    avg_price_per_ton = (total_cost_rs / total_qty_kg) * KG_PER_TON
+    interest_per_ton = avg_price_per_ton * DAILY_RATE * avg_days_held
+    breakeven_per_ton = avg_price_per_ton + RENTAL_PER_TON + interest_per_ton
+    return float(round(breakeven_per_ton, 2))
+
+
+@bp.route('/calculate-trading')
+def calculate_trading_activity():
+    """
+    For each StockExit row where stockist_name = 'ANUNAY AGRO':
+      profit_i = qty_kg * (rate_per_kg - breakeven_per_ton(as_of, commodity, quality)/1000)
+    Returns total profit and a compact breakdown.
+    """
+    exits = (
+        StockExit.query
+        .filter(StockExit.stockist_name == EXCEPTION_STOCKIST)
+        .order_by(StockExit.date.asc(), StockExit.commodity.asc(), StockExit.quality.asc())
+        .all()
+    )
+
+    total_profit = 0.0
+    breakdown = []
+
+    # Cache breakevens per (date, commodity, quality) to avoid recomputation
+    bk_cache: dict[tuple[date, str, str], float] = {}
+
+    for row in exits:
+        as_of = row.date
+        commodity = (row.commodity or "").strip()
+        quality = (row.quality or "").strip() or "Good"  # default if blank
+        qty_kg = float(row.quantity or 0.0)
+        rate_per_kg = float(row.rate or 0.0)
+
+        if qty_kg <= 0 or not commodity:
+            continue
+
+        key = (as_of, commodity, quality)
+        if key not in bk_cache:
+            bk_cache[key] = _breakeven_per_ton(commodity, quality, as_of)
+
+        bk_per_ton = bk_cache[key]
+        bk_per_kg = bk_per_ton / KG_PER_TON if bk_per_ton > 0 else 0.0
+
+        profit_i = qty_kg * (rate_per_kg - bk_per_kg)
+        total_profit += profit_i
+
+        breakdown.append({
+            "date": as_of.strftime("%Y-%m-%d") if isinstance(as_of, date) else str(as_of),
+            "commodity": commodity,
+            "quality": quality,
+            "quantity_kg": round(qty_kg, 3),
+            "rate_per_kg": round(rate_per_kg, 2),
+            "breakeven_per_kg": round(bk_per_kg, 2),
+            "profit": round(profit_i, 2),
+        })
+
+    # Optional: bucket summary by commodity/quality
+    by_combo = defaultdict(float)
+    for b in breakdown:
+        by_combo[(b["commodity"], b["quality"])] += b["profit"]
+    summary = [
+        {"commodity": c, "quality": q, "profit": round(p, 2)}
+        for (c, q), p in sorted(by_combo.items())
+    ]
+
+    return jsonify({
+        "total_trading_profit": round(total_profit, 2),
+        "summary_by_combo": summary,
+        "rows": breakdown[:200]  # keep payload reasonable; adjust as needed
+    })
+
