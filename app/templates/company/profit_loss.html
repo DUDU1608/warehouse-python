@@ -2,124 +2,186 @@
 <html>
 <head>
     <title>Profit/Loss Calculator</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .container { max-width: 720px; margin-top: 48px; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px #e1e7f0; padding: 30px 34px;}
-        .form-label { font-weight: 500; }
-        h2 { color: #0a3871; font-weight: 600; margin-bottom: 26px; }
-        .btn-primary { min-width: 130px; }
+        body { background: #f7f8fb; }
+        .container { max-width: 880px; margin-top: 42px; background: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(20,32,53,.06); padding: 28px 30px;}
+        h2 { color: #0a3871; font-weight: 700; margin-bottom: 22px; }
+        .btn { min-width: 160px; }
         .section-title { margin-top: 18px; margin-bottom: 10px; font-weight: 600; color: #0a3871; }
         .muted { color: #6c757d; }
-        .table { background: #fff; }
+        .table thead th { background: #f2f5fb; }
+        .mono { font-variant-numeric: tabular-nums; }
     </style>
 </head>
-<body class="container mt-4">
+<body>
+<div class="container">
+    <h2>Company Finance: Profit/Loss Calculator</h2>
 
-    <h2 class="mb-4">Company Finance: Profit/Loss Calculator</h2>
-
-    <div class="btn-group mb-4">
-        <button class="btn btn-primary" onclick="calculateWarehousing()">Warehousing Activity</button>
-        <button class="btn btn-secondary" onclick="calculateFinancing()">Financing Activity</button>
-        <button class="btn btn-secondary" onclick="alert('Trading logic pending')">Trading Activity</button>
-        <button class="btn btn-secondary" onclick="alert('Other incomes/expenses pending')">Others</button>
+    <div class="btn-toolbar gap-2 mb-3" role="toolbar">
+        <div class="btn-group me-2" role="group">
+            <button class="btn btn-primary" onclick="calculateWarehousing()">Warehousing</button>
+            <button class="btn btn-outline-primary" onclick="calculateFinancing()">Financing</button>
+            <button class="btn btn-outline-success" onclick="calculateTrading()">Trading</button>
+            <button class="btn btn-outline-secondary" onclick="alert('Others: pending')">Others</button>
+        </div>
     </div>
 
     <div id="resultArea" class="alert alert-info d-none"></div>
 
-    <script>
-    function formatINR(num) {
-        if (num === null || num === undefined || isNaN(num)) return "0";
-        // Simple Indian number formatting with commas
-        return Number(num).toLocaleString('en-IN', { maximumFractionDigits: 2 });
-    }
+    <div id="tableArea" class="mt-3 d-none"></div>
+</div>
 
-    function calculateWarehousing() {
-        fetch("/company/calculate-warehousing")
-            .then(response => response.json())
-            .then(data => {
-                const resultDiv = document.getElementById("resultArea");
-                resultDiv.classList.remove("d-none");
+<script>
+function formatINR(num) {
+    if (num === null || num === undefined || isNaN(num)) return "0";
+    return Number(num).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
 
-                // Safeguards for missing fields
-                const totalRental = data && typeof data.total_rental === 'number' ? data.total_rental : 0;
-                const anunayRental = data && typeof data.anunay_agro_rental === 'number' ? data.anunay_agro_rental : 0;
-                const othersMonthly = (data && Array.isArray(data.others_rental_by_month)) ? data.others_rental_by_month : [];
+function calculateWarehousing() {
+    fetch("/company/calculate-warehousing")
+        .then(response => response.json())
+        .then(data => {
+            const resultDiv = document.getElementById("resultArea");
+            const tableDiv = document.getElementById("tableArea");
+            resultDiv.classList.remove("d-none");
+            tableDiv.classList.add("d-none");
+            const totalRental = data?.total_rental ?? 0;
+            const anunayRental = data?.anunay_agro_rental ?? 0;
+            const othersMonthly = Array.isArray(data?.others_rental_by_month) ? data.others_rental_by_month : [];
 
-                // Empty state
-                if (totalRental === 0 && anunayRental === 0 && othersMonthly.length === 0) {
-                    resultDiv.innerHTML = "No rental data available.";
-                    return;
-                }
+            let html = `<h5 class="mb-2">Total Rental Charged (Upto Today): ₹${formatINR(totalRental)}</h5>`;
+            html += `
+                <div class="section-title">ANUNAY AGRO</div>
+                <div class="mb-3">
+                    <span class="muted">Flat ₹800/ton/year applied (irrespective of duration)</span><br>
+                    <b>₹${formatINR(anunayRental)}</b>
+                </div>
+            `;
 
-                let html = `<h5>Total Rental Charged (Upto Today): ₹${formatINR(totalRental)}</h5>`;
+            html += `<div class="section-title">Others (Month-wise)</div>`;
+            if (othersMonthly.length === 0) {
+                html += `<div class="muted">No month-wise data for others.</div>`;
+            } else {
+                html += `<table class="table table-bordered table-sm mt-2">
+                    <thead><tr><th>Month</th><th>Rental (₹)</th></tr></thead><tbody>`;
+                othersMonthly.forEach(row => {
+                    html += `<tr>
+                        <td>${row?.month ?? ""}</td>
+                        <td class="mono">₹${formatINR(row?.rental ?? 0)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            }
 
-                // Section: ANUNAY AGRO (separate total)
-                html += `
-                    <div class="section-title">Rental for ANUNAY AGRO</div>
-                    <div class="mb-3">
-                        <span class="muted">Flat ₹800/ton/year applied (irrespective of duration)</span><br>
-                        <b>₹${formatINR(anunayRental)}</b>
-                    </div>
-                `;
+            resultDiv.innerHTML = html;
+        })
+        .catch(err => {
+            const resultDiv = document.getElementById("resultArea");
+            resultDiv.classList.remove("d-none");
+            resultDiv.innerHTML = "Error fetching data: " + err;
+            console.error(err);
+        });
+}
 
-                // Section: Others (month-wise)
-                html += `
-                    <div class="section-title">Rental for Others (Month-wise)</div>
-                `;
+function calculateFinancing() {
+    fetch("/company/calculate-financing")
+        .then(res => res.json())
+        .then(data => {
+            const resultDiv = document.getElementById("resultArea");
+            const tableDiv = document.getElementById("tableArea");
+            resultDiv.classList.remove("d-none");
+            tableDiv.classList.add("d-none");
+            const receivable = data?.receivable ?? 0;
+            const payable = data?.payable ?? 0;
+            const net = data?.net ?? (receivable - payable);
 
-                if (othersMonthly.length === 0) {
-                    html += `<div class="muted">No month-wise data for others.</div>`;
-                } else {
-                    html += `<table class="table table-bordered mt-2">
-                        <thead><tr><th>Month</th><th>Rental (₹)</th></tr></thead><tbody>`;
+            resultDiv.innerHTML = `
+                <h5>Financing Activity Summary</h5>
+                <ul class="mb-0">
+                    <li><b>Interest Receivable:</b> ₹<span class="mono">${formatINR(receivable)}</span></li>
+                    <li><b>Interest Payable:</b> ₹<span class="mono">${formatINR(payable)}</span></li>
+                    <li><b>Net Financing Profit:</b> ₹<span class="mono">${formatINR(net)}</span></li>
+                </ul>
+            `;
+        })
+        .catch(err => {
+            console.error("Error fetching financing data", err);
+            alert("Error calculating financing activity.");
+        });
+}
 
-                    othersMonthly.forEach(row => {
-                        const month = (row && row.month) ? row.month : '';
-                        const rent = (row && typeof row.rental === 'number') ? row.rental : 0;
-                        html += `<tr>
-                            <td>${month}</td>
-                            <td>₹${formatINR(rent)}</td>
-                        </tr>`;
-                    });
+function calculateTrading() {
+    fetch("/company/calculate-trading")
+        .then(res => res.json())
+        .then(data => {
+            const resultDiv = document.getElementById("resultArea");
+            const tableDiv = document.getElementById("tableArea");
+            resultDiv.classList.remove("d-none");
+            tableDiv.classList.remove("d-none");
 
-                    html += `</tbody></table>`;
-                }
+            const total = data?.total_trading_profit ?? 0;
+            const summary = Array.isArray(data?.summary_by_combo) ? data.summary_by_combo : [];
+            const rows = Array.isArray(data?.rows) ? data.rows : [];
 
-                resultDiv.innerHTML = html;
-            })
-            .catch(err => {
-                const resultDiv = document.getElementById("resultArea");
-                resultDiv.classList.remove("d-none");
-                resultDiv.innerHTML = "Error fetching data: " + err;
-                console.error(err);
-            });
-    }
+            resultDiv.innerHTML = `
+                <h5 class="mb-2">Trading Profit (ANUNAY AGRO)</h5>
+                <div><b>Total Trading Profit:</b> ₹<span class="mono">${formatINR(total)}</span></div>
+            `;
 
-    function calculateFinancing() {
-        fetch("/company/calculate-financing")
-            .then(res => res.json())
-            .then(data => {
-                const resultDiv = document.getElementById("resultArea");
-                resultDiv.classList.remove("d-none");
-                const receivable = data && typeof data.receivable === 'number' ? data.receivable : 0;
-                const payable = data && typeof data.payable === 'number' ? data.payable : 0;
-                const net = data && typeof data.net === 'number' ? data.net : (receivable - payable);
+            let html = "";
+            if (summary.length) {
+                html += `<div class="section-title">By Commodity / Quality</div>
+                         <table class="table table-bordered table-sm">
+                         <thead><tr><th>Commodity</th><th>Quality</th><th>Profit (₹)</th></tr></thead><tbody>`;
+                summary.forEach(s => {
+                    html += `<tr>
+                        <td>${s.commodity}</td>
+                        <td>${s.quality}</td>
+                        <td class="mono">₹${formatINR(s.profit)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            }
 
-                resultDiv.innerHTML = `
-                    <h5>Financing Activity Summary</h5>
-                    <ul>
-                        <li><b>Interest Receivable:</b> ₹${formatINR(receivable)}</li>
-                        <li><b>Interest Payable:</b> ₹${formatINR(payable)}</li>
-                        <li><b>Net Financing Profit:</b> ₹${formatINR(net)}</li>
-                    </ul>
-                `;
-            })
-            .catch(err => {
-                console.error("Error fetching financing data", err);
-                alert("Error calculating financing activity.");
-            });
-    }
-    </script>
+            if (rows.length) {
+                html += `<div class="section-title">Breakdown (first ${rows.length} rows)</div>
+                         <table class="table table-bordered table-sm">
+                         <thead>
+                            <tr>
+                                <th>Date</th><th>Commodity</th><th>Quality</th>
+                                <th class="text-end">Qty (kg)</th>
+                                <th class="text-end">Rate (₹/kg)</th>
+                                <th class="text-end">Breakeven (₹/kg)</th>
+                                <th class="text-end">Profit (₹)</th>
+                            </tr>
+                         </thead><tbody>`;
+                rows.forEach(r => {
+                    html += `<tr>
+                        <td>${r.date}</td>
+                        <td>${r.commodity}</td>
+                        <td>${r.quality}</td>
+                        <td class="text-end mono">${formatINR(r.quantity_kg)}</td>
+                        <td class="text-end mono">${formatINR(r.rate_per_kg)}</td>
+                        <td class="text-end mono">${formatINR(r.breakeven_per_kg)}</td>
+                        <td class="text-end mono">${formatINR(r.profit)}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            } else {
+                html += `<div class="muted">No trading rows for ANUNAY AGRO found.</div>`;
+            }
 
+            tableDiv.innerHTML = html;
+        })
+        .catch(err => {
+            console.error("Error fetching trading data", err);
+            alert("Error calculating trading activity.");
+        });
+}
+</script>
 </body>
 </html>
