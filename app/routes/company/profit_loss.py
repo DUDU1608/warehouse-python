@@ -67,27 +67,18 @@ def calculate_warehousing():
     end_date = datetime.today().date()
 
     # ----- (A) ANUNAY AGRO: flat ₹800/ton on current net stock as of today -----
-    anunay_net_row = db.session.execute(
-        text("""
-            SELECT
-                COALESCE((
-                    SELECT SUM(quantity)
-                    FROM stock_data
-                    WHERE UPPER(stockist_name) = UPPER(:name) AND date <= :d
-                ), 0) -
-                COALESCE((
-                    SELECT SUM(quantity)
-                    FROM stock_exit
-                    WHERE UPPER(stockist_name) = UPPER(:name) AND date <= :d
-                ), 0) AS net_kg
-        """),
-        {"name": EXCEPTION_STOCKIST, "d": end_date}
-    ).fetchone()
+    anunay_in_row = db.session.execute(
+    text("""
+        SELECT COALESCE(SUM(quantity), 0) AS in_kg
+        FROM stock_data
+        WHERE UPPER(stockist_name) = UPPER(:name) AND date <= :d
+    """),
+    {"name": EXCEPTION_STOCKIST, "d": end_date}
+).fetchone()
 
-    anunay_net_kg = float(anunay_net_row.net_kg or 0.0)
-    anunay_net_ton = max(0.0, anunay_net_kg) / KG_PER_TON_LOCAL
-    anunay_agro_rental = anunay_net_ton * FLAT_YEARLY_PER_TON  # full flat, not pro-rated
-
+anunay_in_kg = float(anunay_in_row.in_kg or 0.0)
+anunay_in_ton = max(0.0, anunay_in_kg) / KG_PER_TON_LOCAL
+anunay_agro_rental = anunay_in_ton * FLAT_YEARLY_PER_TON
     # ----- (B) OTHERS: month-wise @ ₹3.334/ton/day (exclude ANUNAY) -----
     others_monthly = defaultdict(float)
 
