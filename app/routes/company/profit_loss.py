@@ -58,27 +58,29 @@ def calculate_warehousing():
             "total_rental": 0.0
         })
 
+    # robust parse for min date
     min_raw = min_row.min_date
     if isinstance(min_raw, str):
         start_date = datetime.strptime(min_raw, "%Y-%m-%d").date()
     else:
-        start_date = getattr(min_raw, "date", lambda: min_raw)()
+        start_date = min_raw if isinstance(min_raw, date) else min_raw.date()
 
     end_date = datetime.today().date()
 
-    # ----- (A) ANUNAY AGRO: flat ₹800/ton on current net stock as of today -----
+    # ----- (A) ANUNAY AGRO: flat ₹800/ton on ALL IN quantities up to today (exits ignored) -----
     anunay_in_row = db.session.execute(
-    text("""
-        SELECT COALESCE(SUM(quantity), 0) AS in_kg
-        FROM stock_data
-        WHERE UPPER(stockist_name) = UPPER(:name) AND date <= :d
-    """),
-    {"name": EXCEPTION_STOCKIST, "d": end_date}
-).fetchone()
+        text("""
+            SELECT COALESCE(SUM(quantity), 0) AS in_kg
+            FROM stock_data
+            WHERE UPPER(stockist_name) = UPPER(:name) AND date <= :d
+        """),
+        {"name": EXCEPTION_STOCKIST, "d": end_date}
+    ).fetchone()
 
-anunay_in_kg = float(anunay_in_row.in_kg or 0.0)
-anunay_in_ton = max(0.0, anunay_in_kg) / KG_PER_TON_LOCAL
-anunay_agro_rental = anunay_in_ton * FLAT_YEARLY_PER_TON
+    anunay_in_kg = float(anunay_in_row.in_kg or 0.0)
+    anunay_in_ton = anunay_in_kg / KG_PER_TON_LOCAL if anunay_in_kg > 0 else 0.0
+    anunay_agro_rental = anunay_in_ton * FLAT_YEARLY_PER_TON  # flat, not pro-rated
+
     # ----- (B) OTHERS: month-wise @ ₹3.334/ton/day (exclude ANUNAY) -----
     others_monthly = defaultdict(float)
 
@@ -104,10 +106,11 @@ anunay_agro_rental = anunay_in_ton * FLAT_YEARLY_PER_TON
             {"d": current_date, "name": EXCEPTION_STOCKIST}
         ).fetchall()
 
-        in_by = { (r.stockist_name or "").strip(): float(r.total_in or 0.0) for r in ins }
-        out_by = { (r.stockist_name or "").strip(): float(r.total_out or 0.0) for r in outs }
+        in_by = {(r.stockist_name or "").strip(): float(r.total_in or 0.0) for r in ins}
+        out_by = {(r.stockist_name or "").strip(): float(r.total_out or 0.0) for r in outs}
         stockists = set(in_by.keys()) | set(out_by.keys())
 
+        # Month label (with "Upto" suffix for current month)
         month_label = current_date.strftime("%b %Y")
         if current_date.month == end_date.month and current_date.year == end_date.year:
             month_label = f"{end_date.strftime('%b %Y')} (Upto {end_date.strftime('%d/%m/%y')})"
@@ -117,7 +120,7 @@ anunay_agro_rental = anunay_in_ton * FLAT_YEARLY_PER_TON
             net_kg = max(0.0, in_by.get(name, 0.0) - out_by.get(name, 0.0))
             if net_kg <= 0.0:
                 continue
-            net_ton = net_kg / 1000.0
+            net_ton = net_kg / KG_PER_TON_LOCAL
             day_rent += net_ton * RATE_PER_TON_PER_DAY
 
         if day_rent:
@@ -126,7 +129,7 @@ anunay_agro_rental = anunay_in_ton * FLAT_YEARLY_PER_TON
         current_date += timedelta(days=1)
 
     others_list = [{"month": m, "rental": round(v, 2)} for m, v in others_monthly.items()]
-    total_rental = anunay_agro_rental + sum(v for v in others_monthly.values())
+    total_rental = anunay_agro_rental + sum(others_monthly.values())
 
     return jsonify({
         "anunay_agro_rental": round(anunay_agro_rental, 2),
