@@ -8,6 +8,7 @@ from flask import render_template, make_response, request
 from fpdf import FPDF
 from flask import send_file
 import io
+from sqlalchemy import func
 
 
 bp = Blueprint('stockdata', __name__, url_prefix='/stockdata')
