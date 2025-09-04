@@ -20,19 +20,37 @@ def get_filter_choices():
 
 @bp.route('/list', methods=['GET'])
 def display_stock_data():
+    def _parse_date(val: str | None):
+        if not val:
+            return None
+        try:
+            return datetime.strptime(val, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
     query = StockData.query
 
     # Filters from query string
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
+    start_date_s = request.args.get('start_date')
+    end_date_s = request.args.get('end_date')
     stockist_name = request.args.get('stockist_name')
     warehouse = request.args.get('warehouse')
     commodity = request.args.get('commodity')
     quality = request.args.get('quality')
     kind_of_stock = request.args.get('kind_of_stock')
 
+    # Parse dates safely
+    start_date = _parse_date(start_date_s)
+    end_date = _parse_date(end_date_s)
+
+    # Apply filters
     if start_date and end_date:
         query = query.filter(StockData.date.between(start_date, end_date))
+    elif start_date:
+        query = query.filter(StockData.date >= start_date)
+    elif end_date:
+        query = query.filter(StockData.date <= end_date)
+
     if stockist_name:
         query = query.filter(StockData.stockist_name == stockist_name)
     if warehouse:
@@ -44,6 +62,14 @@ def display_stock_data():
     if kind_of_stock:
         query = query.filter(StockData.kind_of_stock == kind_of_stock)
 
+    # --- NEW: aggregated totals on the filtered set ---
+    totals = query.with_entities(
+        func.coalesce(func.sum(StockData.quantity), 0.0),
+        func.coalesce(func.sum(StockData.net_qty), 0.0),
+        func.count(StockData.id)
+    ).first()
+    total_quantity, total_net_qty, row_count = (totals or (0.0, 0.0, 0))
+
     stocks = query.order_by(StockData.date.desc()).all()
     stockist_names, warehouses = get_filter_choices()
 
@@ -51,9 +77,11 @@ def display_stock_data():
         "stockist/list_stock_data.html",
         stocks=stocks,
         stockist_names=stockist_names,
-        warehouses=warehouses
+        warehouses=warehouses,
+        total_quantity=total_quantity,
+        total_net_qty=total_net_qty,
+        row_count=row_count
     )
-
 @bp.route('/add', methods=['GET', 'POST'])
 def add_stock_data():
     stockists = Stockist.query.all()
