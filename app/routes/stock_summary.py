@@ -8,7 +8,7 @@ bp = Blueprint('stock_summary', __name__)
 def stock_summary():
     # Get filter values from query params
     warehouse = request.args.get('warehouse') or None
-    commodity = request.args.get('commodity') or None
+    commodity = request.args.get('commodity') or None  # e.g., "Maize", "Wheat", etc.
 
     # 1. Get all unique stockist names from StockData for selected filters
     query = StockData.query
@@ -25,61 +25,86 @@ def stock_summary():
         'total_margin_loan': 0, 'total_total_loan': 0
     }
 
+    # normalize commodity for comparison once
+    selected_is_maize = (commodity or "").strip().lower() == "maize"
+
     for name in stockist_names:
         # Company Purchase = sum(quantity) where kind_of_stock="transferred"
-        company_purchase = StockData.query.filter_by(stockist_name=name, kind_of_stock="transferred")
+        company_purchase_q = StockData.query.filter_by(stockist_name=name, kind_of_stock="transferred")
         if warehouse:
-            company_purchase = company_purchase.filter(StockData.warehouse == warehouse)
+            company_purchase_q = company_purchase_q.filter(StockData.warehouse == warehouse)
         if commodity:
-            company_purchase = company_purchase.filter(StockData.commodity == commodity)
-        company_purchase = company_purchase.with_entities(func.coalesce(func.sum(StockData.quantity), 0)).scalar() or 0
+            company_purchase_q = company_purchase_q.filter(StockData.commodity == commodity)
+        company_purchase = company_purchase_q.with_entities(
+            func.coalesce(func.sum(StockData.quantity), 0)
+        ).scalar() or 0
 
         # Self Storage = sum(quantity) where kind_of_stock="self"
-        self_storage = StockData.query.filter_by(stockist_name=name, kind_of_stock="self")
+        self_storage_q = StockData.query.filter_by(stockist_name=name, kind_of_stock="self")
         if warehouse:
-            self_storage = self_storage.filter(StockData.warehouse == warehouse)
+            self_storage_q = self_storage_q.filter(StockData.warehouse == warehouse)
         if commodity:
-            self_storage = self_storage.filter(StockData.commodity == commodity)
-        self_storage = self_storage.with_entities(func.coalesce(func.sum(StockData.quantity), 0)).scalar() or 0
+            self_storage_q = self_storage_q.filter(StockData.commodity == commodity)
+        self_storage = self_storage_q.with_entities(
+            func.coalesce(func.sum(StockData.quantity), 0)
+        ).scalar() or 0
 
         # Stock Exit = sum(quantity) from StockExit
-        stock_exit = StockExit.query.filter_by(stockist_name=name)
+        stock_exit_q = StockExit.query.filter_by(stockist_name=name)
         if warehouse:
-            stock_exit = stock_exit.filter(StockExit.warehouse == warehouse)
+            stock_exit_q = stock_exit_q.filter(StockExit.warehouse == warehouse)
         if commodity:
-            stock_exit = stock_exit.filter(StockExit.commodity == commodity)
-        stock_exit = stock_exit.with_entities(func.coalesce(func.sum(StockExit.quantity), 0)).scalar() or 0
+            stock_exit_q = stock_exit_q.filter(StockExit.commodity == commodity)
+        stock_exit = stock_exit_q.with_entities(
+            func.coalesce(func.sum(StockExit.quantity), 0)
+        ).scalar() or 0
 
-        # Net Quantity = Company Purchase + Self Storage - Stock Exit
+        # Default Net Quantity = Company Purchase + Self Storage - Stock Exit
         net_quantity = company_purchase + self_storage - stock_exit
 
+        # --- Maize-specific rule ---
+        # If 'Maize' is selected in filters, and the exits are >= 9.85% of (self + company),
+        # then cap net quantity to zero (only if there was some inflow).
+        if selected_is_maize:
+            base_total = self_storage + company_purchase
+            if base_total > 0:
+                threshold = 0.0985 * base_total
+                if stock_exit >= threshold:
+                    net_quantity = 0
+
         # Margin from MarginData
-        margin = MarginData.query.filter_by(stockist_name=name)
+        margin_q = MarginData.query.filter_by(stockist_name=name)
         if warehouse:
-            margin = margin.filter(MarginData.warehouse == warehouse)
+            margin_q = margin_q.filter(MarginData.warehouse == warehouse)
         if commodity:
-            margin = margin.filter(MarginData.commodity == commodity)
-        margin = margin.with_entities(func.coalesce(func.sum(MarginData.amount), 0)).scalar() or 0
+            margin_q = margin_q.filter(MarginData.commodity == commodity)
+        margin = margin_q.with_entities(
+            func.coalesce(func.sum(MarginData.amount), 0)
+        ).scalar() or 0
 
         # Cash Loan (loan_type='Cash')
-        cash_loan = LoanData.query.filter_by(stockist_name=name, loan_type="Cash")
+        cash_loan_q = LoanData.query.filter_by(stockist_name=name, loan_type="Cash")
         if warehouse:
-            cash_loan = cash_loan.filter(LoanData.warehouse == warehouse)
+            cash_loan_q = cash_loan_q.filter(LoanData.warehouse == warehouse)
         if commodity:
-            cash_loan = cash_loan.filter(LoanData.commodity == commodity)
-        cash_loan = cash_loan.with_entities(func.coalesce(func.sum(LoanData.amount), 0)).scalar() or 0
+            cash_loan_q = cash_loan_q.filter(LoanData.commodity == commodity)
+        cash_loan = cash_loan_q.with_entities(
+            func.coalesce(func.sum(LoanData.amount), 0)
+        ).scalar() or 0
 
         # Margin Loan (loan_type='Margin')
-        margin_loan = LoanData.query.filter_by(stockist_name=name, loan_type="Margin")
+        margin_loan_q = LoanData.query.filter_by(stockist_name=name, loan_type="Margin")
         if warehouse:
-            margin_loan = margin_loan.filter(LoanData.warehouse == warehouse)
+            margin_loan_q = margin_loan_q.filter(LoanData.warehouse == warehouse)
         if commodity:
-            margin_loan = margin_loan.filter(LoanData.commodity == commodity)
-        margin_loan = margin_loan.with_entities(func.coalesce(func.sum(LoanData.amount), 0)).scalar() or 0
+            margin_loan_q = margin_loan_q.filter(LoanData.commodity == commodity)
+        margin_loan = margin_loan_q.with_entities(
+            func.coalesce(func.sum(LoanData.amount), 0)
+        ).scalar() or 0
 
         total_loan = cash_loan + margin_loan
 
-        # Update summary
+        # Update summary (use possibly-adjusted net_quantity)
         summary['total_company_purchase'] += company_purchase
         summary['total_self_storage'] += self_storage
         summary['total_stock_exit'] += stock_exit
