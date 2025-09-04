@@ -94,6 +94,17 @@
         <a href="{{ url_for('stockdata.export_stockdata_pdf') }}" class="btn btn-danger btn-sm">Export PDF</a>
         <a href="/stockist/dashboard" class="btn btn-outline-dark btn-sm float-end">← Back to Dashboard</a>
     </div>
+    <div class="alert alert-info py-2 mb-3">
+        <div class="d-flex flex-wrap gap-3 align-items-baseline">
+            <strong class="me-2">Filtered Summary:</strong>
+            <span><strong>Rows:</strong> {{ row_count }}</span>
+            <span>•</span>
+            <span><strong>Total Quantity (kg):</strong> {{ "%.2f"|format(total_quantity or 0) }}</span>
+            <span>•</span>
+            <span><strong>Total Net Qty (kg):</strong> {{ "%.2f"|format(total_net_qty or 0) }}</span>
+            <span class="text-muted ms-2">(MT: {{ "%.3f"|format((total_quantity or 0)/1000) }} / {{ "%.3f"|format((total_net_qty or 0)/1000) }})</span>
+        </div>
+    </div>
 
     <!-- Table -->
     <div class="table-responsive mb-3">
