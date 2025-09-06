@@ -1,8 +1,7 @@
 # app/models.py
 from datetime import date, datetime
-
-from flask_login import UserMixin
 from sqlalchemy.orm import column_property
+from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app import db, login_manager
@@ -132,6 +131,7 @@ class StockExit(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     date = db.Column(db.Date, nullable=False)
+    rst_no = db.Column(db.String(50), index=True)
     warehouse = db.Column(db.String(100), nullable=False)
     stockist_name = db.Column(db.String(100), nullable=False)
     mobile = db.Column(db.String(20))
@@ -244,8 +244,7 @@ class BuyerSale(db.Model):
     stockist_name = db.Column(db.String(100), index=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-
+    
 class BuyerPayment(db.Model):
     __tablename__ = "buyer_payment"
 
