@@ -1,152 +1,398 @@
-from flask import Blueprint, render_template, request
-from app.models import (
-    StockData, StockExit, MarginData, LoanData, Stockist,
-    StockistLoanRepayment,   # <-- add this
-)
-from sqlalchemy import func
+# app/models.py
+from datetime import date, datetime
 
-bp = Blueprint('stock_summary', __name__)
+from flask_login import UserMixin
+from sqlalchemy.orm import column_property
+from werkzeug.security import generate_password_hash, check_password_hash
 
-@bp.route('/stock_summary', methods=['GET'])
-def stock_summary():
-    # Get filter values from query params
-    warehouse = request.args.get('warehouse') or None
-    commodity = request.args.get('commodity') or None  # e.g., "Maize", "Wheat", etc.
+from app import db, login_manager
 
-    # 1. Get all unique stockist names from StockData for selected filters
-    query = StockData.query
-    if warehouse:
-        query = query.filter(StockData.warehouse == warehouse)
-    if commodity:
-        query = query.filter(StockData.commodity == commodity)
-    stockist_names = [r[0] for r in query.with_entities(StockData.stockist_name).distinct()]
 
-    rows = []
-    summary = {
-        'total_company_purchase': 0,
-        'total_self_storage': 0,
-        'total_stock_exit': 0,
-        'total_net_quantity': 0,
-        'total_margin': 0,
-        'total_cash_loan': 0,        # kept for compatibility
-        'total_margin_loan': 0,      # kept for compatibility
-        'total_total_loan': 0,       # kept for compatibility
-        'total_loan_outstanding': 0  # NEW
-    }
+# ---------------------------
+# Auth / Users
+# ---------------------------
+class User(db.Model, UserMixin):
+    __tablename__ = "user"                          # keep existing table name
+    __table_args__ = {"extend_existing": True}      # guard against duplicate imports
 
-    # normalize commodity for comparison once
-    selected_is_maize = (commodity or "").strip().lower() == "maize"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(100))
+    mobile = db.Column(db.String(15), unique=True, index=True)
+    password_hash = db.Column(db.String(128), nullable=True)
 
-    for name in stockist_names:
-        # Company Purchase = sum(quantity) where kind_of_stock="transferred"
-        company_purchase_q = StockData.query.filter_by(stockist_name=name, kind_of_stock="transferred")
-        if warehouse:
-            company_purchase_q = company_purchase_q.filter(StockData.warehouse == warehouse)
-        if commodity:
-            company_purchase_q = company_purchase_q.filter(StockData.commodity == commodity)
-        company_purchase = company_purchase_q.with_entities(
-            func.coalesce(func.sum(StockData.quantity), 0)
-        ).scalar() or 0
+    def set_password(self, password: str):
+        self.password_hash = generate_password_hash(password, method="pbkdf2:sha256")
 
-        # Self Storage = sum(quantity) where kind_of_stock="self"
-        self_storage_q = StockData.query.filter_by(stockist_name=name, kind_of_stock="self")
-        if warehouse:
-            self_storage_q = self_storage_q.filter(StockData.warehouse == warehouse)
-        if commodity:
-            self_storage_q = self_storage_q.filter(StockData.commodity == commodity)
-        self_storage = self_storage_q.with_entities(
-            func.coalesce(func.sum(StockData.quantity), 0)
-        ).scalar() or 0
+    def check_password(self, password: str) -> bool:
+        return check_password_hash(self.password_hash or "", password)
 
-        # Stock Exit = sum(quantity)
-        stock_exit_q = StockExit.query.filter_by(stockist_name=name)
-        if warehouse:
-            stock_exit_q = stock_exit_q.filter(StockExit.warehouse == warehouse)
-        if commodity:
-            stock_exit_q = stock_exit_q.filter(StockExit.commodity == commodity)
-        stock_exit = stock_exit_q.with_entities(
-            func.coalesce(func.sum(StockExit.quantity), 0)
-        ).scalar() or 0
 
-        # Net Quantity default
-        net_quantity = company_purchase + self_storage - stock_exit
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return User.query.get(int(user_id))
+    except Exception:
+        return None
 
-        # Maize-specific rule
-        if selected_is_maize:
-            base_total = self_storage + company_purchase
-            if base_total > 0:
-                threshold = 0.0985 * base_total
-                if stock_exit >= threshold:
-                    net_quantity = 0
 
-        # Margin = Σ MarginData.amount
-        margin_q = MarginData.query.filter_by(stockist_name=name)
-        if warehouse:
-            margin_q = margin_q.filter(MarginData.warehouse == warehouse)
-        if commodity:
-            margin_q = margin_q.filter(MarginData.commodity == commodity)
-        margin = margin_q.with_entities(func.coalesce(func.sum(MarginData.amount), 0)).scalar() or 0
+# ---------------------------
+# Seller / Purchases / Payments
+# ---------------------------
+class Seller(db.Model):
+    __tablename__ = "seller"
 
-        # Loans: Cash + Margin (Σ LoanData.amount)
-        # (keeping individual sums for compatibility)
-        cash_loan_q = LoanData.query.filter_by(stockist_name=name, loan_type="Cash")
-        if warehouse:
-            cash_loan_q = cash_loan_q.filter(LoanData.warehouse == warehouse)
-        if commodity:
-            cash_loan_q = cash_loan_q.filter(LoanData.commodity == commodity)
-        cash_loan = cash_loan_q.with_entities(func.coalesce(func.sum(LoanData.amount), 0)).scalar() or 0
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(100))
+    mobile = db.Column(db.String(15), unique=True)
+    address = db.Column(db.String(200))
+    banking_name = db.Column(db.String(100))
+    account_number = db.Column(db.String(30))
+    ifsc_code = db.Column(db.String(20))
+    bank_name = db.Column(db.String(100))
 
-        margin_loan_q = LoanData.query.filter_by(stockist_name=name, loan_type="Margin")
-        if warehouse:
-            margin_loan_q = margin_loan_q.filter(LoanData.warehouse == warehouse)
-        if commodity:
-            margin_loan_q = margin_loan_q.filter(LoanData.commodity == commodity)
-        margin_loan = margin_loan_q.with_entities(func.coalesce(func.sum(LoanData.amount), 0)).scalar() or 0
 
-        total_loan = (cash_loan + margin_loan)
+class Payment(db.Model):
+    __tablename__ = "payment"
 
-        # Repayments: Σ StockistLoanRepayment.amount
-        repay_q = StockistLoanRepayment.query.filter_by(stockist_name=name)
-        if warehouse:
-            repay_q = repay_q.filter(StockistLoanRepayment.warehouse == warehouse)
-        if commodity:
-            repay_q = repay_q.filter(StockistLoanRepayment.commodity == commodity)
-        repayments = repay_q.with_entities(func.coalesce(func.sum(StockistLoanRepayment.amount), 0)).scalar() or 0
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False, default=date.today)
+    seller_name = db.Column(db.String(100), nullable=False)
+    warehouse = db.Column(db.String(100), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)
+    banking_name = db.Column(db.String(100), nullable=False)
+    account_number = db.Column(db.String(30), nullable=False)
+    ifsc = db.Column(db.String(20), nullable=False)
+    amount_paid = db.Column(db.Float, nullable=False)
+    bank_reference = db.Column(db.String(100), nullable=False)
 
-        # ---- Loan Outstanding ----
-        loan_outstanding = total_loan - margin - repayments
 
-        # Update summary
-        summary['total_company_purchase'] += company_purchase
-        summary['total_self_storage'] += self_storage
-        summary['total_stock_exit'] += stock_exit
-        summary['total_net_quantity'] += net_quantity
-        summary['total_margin'] += margin
-        summary['total_cash_loan'] += cash_loan
-        summary['total_margin_loan'] += margin_loan
-        summary['total_total_loan'] += total_loan
-        summary['total_loan_outstanding'] += loan_outstanding  # NEW
+class Purchase(db.Model):
+    __tablename__ = "purchase"
 
-        rows.append({
-            "stockist_name": name,
-            "company_purchase": company_purchase,
-            "self_storage": self_storage,
-            "stock_exit": stock_exit,
-            "net_quantity": net_quantity,
-            "margin": margin,
-            "cash_loan": cash_loan,
-            "margin_loan": margin_loan,
-            "total_loan": total_loan,               # kept if template still references it
-            "loan_outstanding": loan_outstanding    # <-- Use this in the last column
-        })
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.String(20))
+    rst_no = db.Column(db.String(50))
+    warehouse = db.Column(db.String(100))
+    seller_name = db.Column(db.String(100))
+    mobile = db.Column(db.String(20))
+    commodity = db.Column(db.String(50))
+    quantity = db.Column(db.Float)
+    reduction = db.Column(db.Float)
+    net_qty = db.Column(db.Float)
+    rate = db.Column(db.Float)
+    cost = db.Column(db.Float)
+    handling = db.Column(db.Float)
+    net_cost = db.Column(db.Float)
+    quality = db.Column(db.String(20))
 
-    # For filter dropdowns
-    warehouses = [r[0] for r in StockData.query.with_entities(StockData.warehouse).distinct()]
-    commodities = [r[0] for r in StockData.query.with_entities(StockData.commodity).distinct()]
-
-    return render_template(
-        "stock_summary.html",
-        rows=rows, summary=summary,
-        warehouses=warehouses, commodities=commodities,
-        selected_warehouse=warehouse, selected_commodity=commodity
+    __table_args__ = (
+        db.UniqueConstraint("rst_no", "warehouse", name="uix_rstno_warehouse"),
     )
+
+
+# ---------------------------
+# Stockist / Stock
+# ---------------------------
+class Stockist(db.Model):
+    __tablename__ = "stockist"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(100))
+    mobile = db.Column(db.String(15), unique=True)
+    address = db.Column(db.String(200))
+    banking_name = db.Column(db.String(100))
+    account_number = db.Column(db.String(30))
+    ifsc_code = db.Column(db.String(20))
+    bank_name = db.Column(db.String(100))
+
+
+class StockData(db.Model):
+    __tablename__ = "stock_data"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    rst_no = db.Column(db.String(50), nullable=False)
+    warehouse = db.Column(db.String(120), nullable=False)
+    stockist_name = db.Column(db.String(120), nullable=False)
+    mobile = db.Column(db.String(20))
+    commodity = db.Column(db.String(50))
+    quantity = db.Column(db.Float)
+    reduction = db.Column(db.Float)
+    net_qty = db.Column(db.Float)
+    rate = db.Column(db.Float)
+    cost = db.Column(db.Float)
+    handling = db.Column(db.Float)
+    net_cost = db.Column(db.Float)
+    quality = db.Column(db.String(40))
+    kind_of_stock = db.Column(db.String(20), default="self")   # set by backend
+
+
+class StockExit(db.Model):
+    __tablename__ = "stock_exit"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    warehouse = db.Column(db.String(100), nullable=False)
+    stockist_name = db.Column(db.String(100), nullable=False)
+    mobile = db.Column(db.String(20))
+    commodity = db.Column(db.String(30), nullable=False)
+
+    quantity = db.Column(db.Float, nullable=False)
+    reduction = db.Column(db.Float, nullable=False, default=0.0)
+    net_qty = db.Column(db.Float, nullable=False)
+
+    actual_qty = db.Column(db.Float, nullable=True)         # new
+    difference = db.Column(db.Float, nullable=True)         # new
+    rate_of_difference = db.Column(db.Float, nullable=True) # new
+    differential_amount = db.Column(db.Float, nullable=True) # new
+
+    rate = db.Column(db.Float, nullable=False)
+    cost = db.Column(db.Float, nullable=False)
+    handling = db.Column(db.Float, nullable=False)
+    net_cost = db.Column(db.Float, nullable=False)
+    quality = db.Column(db.String(30))
+
+# ---------------------------
+# Financing (stockist-level)
+# ---------------------------
+class LoanData(db.Model):
+    __tablename__ = "loan_data"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    stockist_name = db.Column(db.String(100), nullable=False)
+    warehouse = db.Column(db.String(100))
+    commodity = db.Column(db.String(30))
+    loan_type = db.Column(db.String(30))  # "Cash", "Margin"
+    amount = db.Column(db.Float, nullable=False)
+
+
+class MarginData(db.Model):
+    __tablename__ = "margin_data"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    stockist_name = db.Column(db.String(100), nullable=False)
+    warehouse = db.Column(db.String(100), nullable=False)
+    commodity = db.Column(db.String(20), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+
+
+class StockistPayment(db.Model):
+    __tablename__ = "stockist_payment"
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True, default=date.today)
+    stockist_id = db.Column(db.Integer, db.ForeignKey("stockist.id"), index=True)
+    stockist_name = db.Column(db.String(100), nullable=False)
+    mobile = db.Column(db.String(20))
+    warehouse = db.Column(db.String(150))
+    commodity = db.Column(db.String(50))
+    amount = db.Column(db.Float, nullable=False)
+    bank_reference = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class StockistLoanRepayment(db.Model):
+    __tablename__ = "stockist_loan_repayment"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False, default=date.today)
+    stockist_name = db.Column(db.String(100), nullable=False, index=True)
+    mobile = db.Column(db.String(20), index=True)
+    warehouse = db.Column(db.String(100))
+    commodity = db.Column(db.String(30))
+    amount = db.Column(db.Float, nullable=False)
+    bank_reference = db.Column(db.String(120))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ---------------------------
+# Buyer / Sales
+# ---------------------------
+class Buyer(db.Model):
+    __tablename__ = "buyer"
+
+    id = db.Column(db.Integer, primary_key=True)
+    buyer_name = db.Column(db.String(150), nullable=False, index=True)
+    mobile_no = db.Column(db.String(20), nullable=False, unique=True, index=True)
+    address = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    sales = db.relationship("BuyerSale", backref="buyer", lazy=True, cascade="all, delete-orphan")
+    payments = db.relationship("BuyerPayment", backref="buyer", lazy=True, cascade="all, delete-orphan")
+
+
+class BuyerSale(db.Model):
+    __tablename__ = "buyer_sale"
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    rst_no = db.Column(db.String(50), nullable=False)
+    warehouse = db.Column(db.String(150))
+    buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+    buyer_name = db.Column(db.String(150))
+    mobile = db.Column(db.String(20))
+    commodity = db.Column(db.String(50), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+    rate = db.Column(db.Float, nullable=False)
+    cost = db.Column(db.Float, nullable=False)
+    handling_charge = db.Column(db.Float, default=0.0)
+    net_cost = db.Column(db.Float, nullable=False)  # cost + handling
+    quality = db.Column(db.String(20))  # Good / BD
+
+    # 👇 NEW: stockist chosen for this sale (drives the auto StockExit)
+    stockist_name = db.Column(db.String(100), index=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class BuyerPayment(db.Model):
+    __tablename__ = "buyer_payment"
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True, default=date.today)
+    buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+    buyer_name = db.Column(db.String(150))
+    mobile_no = db.Column(db.String(20))
+    commodity = db.Column(db.String(50))
+    warehouse = db.Column(db.String(150))
+    amount = db.Column(db.Float, nullable=False)
+    reference = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ---------------------------
+# Invoicing (aligned with invoice.py)
+# ---------------------------
+class Invoice(db.Model):
+    __tablename__ = "invoice"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_no = db.Column(db.Integer, nullable=False, unique=True, index=True)
+    date = db.Column(db.Date, nullable=False)
+
+    # IMPORTANT: matches invoice.py (uses buyer_id, not customer_id)
+    buyer_id = db.Column(db.Integer, db.ForeignKey("buyer.id"), nullable=False)
+
+    customer_name = db.Column(db.String(150), nullable=False)
+    address = db.Column(db.String(255))
+    vehicle_no = db.Column(db.String(50))
+    driver_no = db.Column(db.String(50))
+
+    sub_total = db.Column(db.Float, default=0.0)    # matches invoice.py key "sub_total"
+    cgst = db.Column(db.Float, default=0.0)         # always 0 per spec
+    sgst = db.Column(db.Float, default=0.0)         # always 0 per spec
+    grand_total = db.Column(db.Float, default=0.0)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    items = db.relationship("InvoiceItem", backref="invoice", cascade="all, delete-orphan")
+
+
+class InvoiceItem(db.Model):
+    __tablename__ = "invoice_item"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey("invoice.id"), index=True, nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    price = db.Column(db.Float, nullable=False, default=0.0)
+    qty = db.Column(db.Float, nullable=False, default=0.0)
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+
+
+# ---------------------------
+# Residual / Company financing
+# ---------------------------
+class ResidualEarning(db.Model):
+    __tablename__ = "residual_earning"
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    warehouse = db.Column(db.String(150), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)
+    quantity = db.Column(db.Float, nullable=False)
+    rate = db.Column(db.Float, nullable=False)
+    total_earning = db.Column(db.Float, nullable=False)  # usually = quantity * rate
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class CompanyLoan(db.Model):
+    __tablename__ = "company_loan"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    loan_amount = db.Column(db.Float, nullable=False)
+    processing_fee = db.Column(db.Float, nullable=False)
+    gst = db.Column(db.Float, nullable=False)
+    total_processing_fee = db.Column(db.Float, nullable=False)
+    total_disbursement = db.Column(db.Float, nullable=False)
+    interest_rate = db.Column(db.Float, nullable=False)
+
+
+class LoanRepayment(db.Model):
+    __tablename__ = "loan_repayment"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    interest_rate = db.Column(db.Float, nullable=False)
+
+
+class Expenditure(db.Model):
+    __tablename__ = "expenditure"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    date = db.Column(db.Date, nullable=False)
+    expenditure_type = db.Column(db.String(50), nullable=False)  # Maintenance, Salary, Others
+    amount = db.Column(db.Float, nullable=False)
+    comments = db.Column(db.String(255))  # required if type is 'Others'
+
+
+# ---------------------------
+# Assistant chat models
+# ---------------------------
+class ChatSession(db.Model):
+    __tablename__ = "chat_session"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_mobile = db.Column(db.String(20), index=True, nullable=True)  # allow NULL for guests
+    visitor_id = db.Column(db.String(64), index=True, nullable=True)
+    scope = db.Column(db.String(20), default="public", nullable=True)  # "public" or "account"
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    status = db.Column(db.String(20), default="open")   # open, closed
+    escalated = db.Column(db.Boolean, default=False)
+    assigned_agent = db.Column(db.String(50), nullable=True)
+
+
+class ChatMessage(db.Model):
+    __tablename__ = "chat_message"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    session_id = db.Column(db.Integer, db.ForeignKey("chat_session.id"), index=True, nullable=False)
+    sender_type = db.Column(db.String(10), nullable=False)  # user, bot, agent, system
+    sender_id = db.Column(db.String(50), nullable=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    is_private = db.Column(db.Boolean, default=False)
+
+    session = db.relationship("ChatSession", backref=db.backref("messages", lazy="dynamic"))
+
+class CompanyStock(db.Model):
+    __tablename__ = "company_stock"
+
+    id = db.Column(db.Integer, primary_key=True)
+    warehouse = db.Column(db.String(120), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)     # e.g., Wheat / Maize / Paddy
+    quantity = db.Column(db.Numeric(14, 3), nullable=False)  # store in kg or unit you prefer
+    quality = db.Column(db.String(20), nullable=False)       # e.g., Good / BD
+    average_price = db.Column(db.Numeric(14, 2), nullable=False)  # per unit price
+
+    # Computed at DB level: total_price = quantity * average_price
+    total_price = column_property(quantity * average_price)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<CompanyStock {self.id} {self.warehouse} {self.commodity}>"
