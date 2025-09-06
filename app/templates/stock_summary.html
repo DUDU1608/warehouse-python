@@ -57,6 +57,7 @@
                     <th>Cash Loan</th>
                     <th>Margin Loan</th>
                     <th>Total Loan</th>
+                    <th>Loan outstanding</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,6 +72,7 @@
                     <td>{{ summary.total_cash_loan or 0 }}</td>
                     <td>{{ summary.total_margin_loan or 0 }}</td>
                     <td>{{ summary.total_total_loan or 0 }}</td>
+                    <td>{{ summary.total_loan_outstanding or 0 }}</td>
                 </tr>
                 {% endif %}
                 {% for row in rows %}
@@ -84,6 +86,7 @@
                     <td>{{ row.cash_loan or 0 }}</td>
                     <td>{{ row.margin_loan or 0 }}</td>
                     <td>{{ row.total_loan or 0 }}</td>
+                    <td>{{ row.loan_outstanding or 0 }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="9" class="text-center">No records found.</td></tr>
