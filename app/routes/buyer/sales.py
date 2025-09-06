@@ -287,21 +287,21 @@ def update_sale(sale_id: int):
     mobile = _stockist_mobile(sale.stockist_name)
 
     if sx:
-    sx.date = sale.date
-    sx.warehouse = sale.warehouse or ""
-    sx.stockist_name = sale.stockist_name or ""
-    sx.mobile = mobile
-    sx.commodity = sale.commodity or ""
-    sx.quantity = sale.quantity
-    sx.reduction = 0.0
-    sx.net_qty = sale.quantity
-    sx.rate = sale.rate                 # <-- mirror instead of 0.0
-    sx.cost = sale.cost                 # <-- mirror instead of 0.0
-    sx.handling = sale.handling_charge  # <-- mirror instead of 0.0
-    sx.net_cost = sale.net_cost         # <-- mirror instead of 0.0
-    sx.quality = sale.quality
-else:
-    _ensure_stockexit_for_sale(sale)
+        sx.date = sale.date
+        sx.warehouse = sale.warehouse or ""
+        sx.stockist_name = sale.stockist_name or ""
+        sx.mobile = mobile
+        sx.commodity = sale.commodity or ""
+        sx.quantity = sale.quantity
+        sx.reduction = 0.0
+        sx.net_qty = sale.quantity
+        sx.rate = sale.rate                 # <-- mirror instead of 0.0
+        sx.cost = sale.cost                 # <-- mirror instead of 0.0
+        sx.handling = sale.handling_charge  # <-- mirror instead of 0.0
+        sx.net_cost = sale.net_cost         # <-- mirror instead of 0.0
+        sx.quality = sale.quality
+    else:
+        _ensure_stockexit_for_sale(sale)
 
     db.session.commit()
     flash("Sale updated.", "success")
