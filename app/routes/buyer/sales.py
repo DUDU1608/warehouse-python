@@ -70,15 +70,10 @@ def _find_matching_stockexit(
 def _ensure_stockexit_for_sale(sale: BuyerSale):
     """
     Create or update the StockExit row corresponding to this sale.
-    Rules:
-      • quantity -> sale.quantity
-      • net_qty  -> same as quantity (no reduction logic from sale)
-      • reduction/rate/cost/handling/net_cost -> 0
-      • mobile auto-fills from Stockist by name
+    Mirrors quantity, rate, cost, handling, net_cost from BuyerSale.
     """
     mobile = _stockist_mobile(sale.stockist_name)
 
-    # Try to find an exact match row first
     sx = _find_matching_stockexit(
         when=sale.date,
         stockist_name=sale.stockist_name or "",
@@ -98,15 +93,14 @@ def _ensure_stockexit_for_sale(sale: BuyerSale):
             quantity=sale.quantity,
             reduction=0.0,
             net_qty=sale.quantity,
-            rate=0.0,
-            cost=0.0,
-            handling=0.0,
-            net_cost=0.0,
+            rate=sale.rate,                   # <-- mirror
+            cost=sale.cost,                   # <-- mirror
+            handling=sale.handling_charge,    # <-- mirror
+            net_cost=sale.net_cost,           # <-- mirror
             quality=sale.quality,
         )
         db.session.add(sx)
     else:
-        # Update fields that could have changed
         sx.date = sale.date
         sx.warehouse = sale.warehouse or ""
         sx.stockist_name = sale.stockist_name or ""
@@ -115,13 +109,11 @@ def _ensure_stockexit_for_sale(sale: BuyerSale):
         sx.quantity = sale.quantity
         sx.reduction = 0.0
         sx.net_qty = sale.quantity
-        sx.rate = 0.0
-        sx.cost = 0.0
-        sx.handling = 0.0
-        sx.net_cost = 0.0
+        sx.rate = sale.rate                 # <-- mirror
+        sx.cost = sale.cost                 # <-- mirror
+        sx.handling = sale.handling_charge  # <-- mirror
+        sx.net_cost = sale.net_cost         # <-- mirror
         sx.quality = sale.quality
-
-    # No commit here; caller decides
 
 
 def _delete_stockexit_for_sale(sale: BuyerSale):
@@ -295,22 +287,21 @@ def update_sale(sale_id: int):
     mobile = _stockist_mobile(sale.stockist_name)
 
     if sx:
-        sx.date = sale.date
-        sx.warehouse = sale.warehouse or ""
-        sx.stockist_name = sale.stockist_name or ""
-        sx.mobile = mobile
-        sx.commodity = sale.commodity or ""
-        sx.quantity = sale.quantity
-        sx.reduction = 0.0
-        sx.net_qty = sale.quantity
-        sx.rate = 0.0
-        sx.cost = 0.0
-        sx.handling = 0.0
-        sx.net_cost = 0.0
-        sx.quality = sale.quality
-    else:
-        # If not found, create a fresh row with the NEW values
-        _ensure_stockexit_for_sale(sale)
+    sx.date = sale.date
+    sx.warehouse = sale.warehouse or ""
+    sx.stockist_name = sale.stockist_name or ""
+    sx.mobile = mobile
+    sx.commodity = sale.commodity or ""
+    sx.quantity = sale.quantity
+    sx.reduction = 0.0
+    sx.net_qty = sale.quantity
+    sx.rate = sale.rate                 # <-- mirror instead of 0.0
+    sx.cost = sale.cost                 # <-- mirror instead of 0.0
+    sx.handling = sale.handling_charge  # <-- mirror instead of 0.0
+    sx.net_cost = sale.net_cost         # <-- mirror instead of 0.0
+    sx.quality = sale.quality
+else:
+    _ensure_stockexit_for_sale(sale)
 
     db.session.commit()
     flash("Sale updated.", "success")
