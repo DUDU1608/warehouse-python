@@ -114,7 +114,7 @@ def stock_summary():
         repayments = repay_q.with_entities(func.coalesce(func.sum(StockistLoanRepayment.amount), 0)).scalar() or 0
 
         # ---- Loan Outstanding ----
-        loan_outstanding = total_loan - margin - repayments
+        loan_outstanding = (cash_loan+margin_loan) - (margin + repayments)
 
         # Update summary
         summary['total_company_purchase'] += company_purchase
