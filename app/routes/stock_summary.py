@@ -103,7 +103,7 @@ def stock_summary():
             margin_loan_q = margin_loan_q.filter(LoanData.commodity == commodity)
         margin_loan = margin_loan_q.with_entities(func.coalesce(func.sum(LoanData.amount), 0)).scalar() or 0
 
-        total_loan = (cash_loan + margin_loan)
+        total_loan = (cash_loan + margin_loan)-margin
 
         # Repayments: Σ StockistLoanRepayment.amount
         repay_q = StockistLoanRepayment.query.filter_by(stockist_name=name)
