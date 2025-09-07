@@ -197,6 +197,7 @@ class StockistLoanRepayment(db.Model):
     __tablename__ = "stockist_loan_repayment"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+     sale_id = db.Column(db.Integer, index=True, nullable=False) 
     date = db.Column(db.Date, nullable=False, default=date.today)
     stockist_name = db.Column(db.String(100), nullable=False, index=True)
     mobile = db.Column(db.String(20), index=True)
