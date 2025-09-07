@@ -305,7 +305,7 @@ def create_app() -> Flask:
     except Exception as e:
         app.logger.exception("company.invoice failed: %s", e)
 
-     try:
+    try:
         from app.routes.company import add_ledger
         app.register_blueprint(add_ledger.bp)
     except Exception as e:
