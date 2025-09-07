@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Loan Ledger · Company Finance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f7f9fc; }
+    .card { border: none; border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.06); }
+    .table thead th { white-space: nowrap; }
+    .badge-soft { background: #eef2ff; color: #3f51b5; }
+    .form-inline-row input { max-width: 150px; }
+    .nowrap { white-space: nowrap; }
+  </style>
+</head>
+<body>
+<div class="container my-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="fw-bold">📒 Loan Ledger</h2>
+    <div class="d-flex gap-2">
+      <form class="d-inline" method="get" action="{{ url_for('loan_ledger.download_pdf') }}">
+        {% if start %}<input type="hidden" name="start" value="{{ start.isoformat() }}">{% endif %}
+        {% if end %}<input type="hidden" name="end" value="{{ end.isoformat() }}">{% endif %}
+        <button class="btn btn-outline-primary">Download PDF</button>
+      </form>
+
+        <form class="d-inline" method="get" action="{{ url_for('loan_ledger.download_excel') }}">
+  {% if start %}<input type="hidden" name="start" value="{{ start.isoformat() }}">{% endif %}
+  {% if end %}<input type="hidden" name="end" value="{{ end.isoformat() }}">{% endif %}
+  <button class="btn btn-outline-success">Download Excel</button>
+</form>
+
+      <a class="btn btn-outline-secondary" href="{{ url_for('loan_ledger.index') }}">Reset</a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form class="row g-2 mb-4" method="get" action="{{ url_for('loan_ledger.index') }}">
+    <div class="col-auto">
+      <label class="form-label mb-0 small">Start</label>
+      <input type="date" name="start" class="form-control" value="{{ start.isoformat() if start }}">
+    </div>
+    <div class="col-auto">
+      <label class="form-label mb-0 small">End</label>
+      <input type="date" name="end" class="form-control" value="{{ end.isoformat() if end }}">
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-primary">Apply</button>
+    </div>
+  </form>
+
+  <div class="row">
+    <!-- Entry form -->
+    <div class="col-lg-4 mb-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Add Entry</h5>
+
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="mb-2">
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ 'warning' if category=='message' else category }} py-2 mb-2">{{ message }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          <form method="POST" action="{{ url_for('loan_ledger.index') }}">
+            <input type="hidden" name="_action" value="create">
+            <div class="mb-2">
+              <label class="form-label">Date</label>
+              <input type="date" name="date" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Purpose / Remarks</label>
+              <input type="text" name="purpose" class="form-control" placeholder="EMI / Prepayment / Sanction..." required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Debit (₹)</label>
+              <input type="number" step="0.01" name="debit" class="form-control" placeholder="Payment made">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Credit (₹)</label>
+              <input type="number" step="0.01" name="credit" class="form-control" placeholder="Loan in / top-up">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Comments</label>
+              <input type="text" name="comments" class="form-control" placeholder="Optional note">
+            </div>
+            <button class="btn btn-success w-100">Add</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ledger table -->
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Ledger Entries</h5>
+            <div class="small text-muted">
+              <span class="badge rounded-pill badge-soft">
+                Debit: ₹{{ '%.2f' % totals.debit }}
+              </span>
+              <span class="badge rounded-pill badge-soft ms-2">
+                Credit: ₹{{ '%.2f' % totals.credit }}
+              </span>
+              <span class="badge rounded-pill bg-success text-white ms-2">
+                Closing: ₹{{ '%.2f' % totals.closing }}
+              </span>
+            </div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-striped align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Purpose</th>
+                  <th class="text-end">Debit (₹)</th>
+                  <th class="text-end">Credit (₹)</th>
+                  <th class="text-end">Balance (₹)</th>
+                  <th>Comments</th>
+                  <th class="nowrap">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if rows %}
+                  {% for r in rows %}
+                    <!-- Display row -->
+                    <tr id="row-display-{{ r.id }}">
+                      <td>{{ r.date.strftime("%d-%m-%Y") }}</td>
+                      <td>{{ r.purpose }}</td>
+                      <td class="text-end">{{ '%.2f' % r.debit }}</td>
+                      <td class="text-end">{{ '%.2f' % r.credit }}</td>
+                      <td class="text-end fw-semibold">{{ '%.2f' % r.balance }}</td>
+                      <td>{{ r.comments }}</td>
+                      <td class="nowrap">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleEdit({{ r.id }})">Edit</button>
+                        <form class="d-inline" method="POST" action="{{ url_for('loan_ledger.delete_row', row_id=r.id) }}" onsubmit="return confirm('Delete this entry? This cannot be undone.');">
+                          {% if start %}<input type="hidden" name="start" value="{{ start.isoformat() }}">{% endif %}
+                          {% if end %}<input type="hidden" name="end" value="{{ end.isoformat() }}">{% endif %}
+                          <button class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                      </td>
+                    </tr>
+
+                    <!-- Inline edit row (hidden by default) -->
+                    <tr id="row-edit-{{ r.id }}" class="form-inline-row" style="display:none;">
+                      <form method="POST" action="{{ url_for('loan_ledger.update_row', row_id=r.id) }}">
+                        {% if start %}<input type="hidden" name="start" value="{{ start.isoformat() }}">{% endif %}
+                        {% if end %}<input type="hidden" name="end" value="{{ end.isoformat() }}">{% endif %}
+                        <td>
+                          <input type="date" name="date" class="form-control form-control-sm" value="{{ r.date.strftime('%Y-%m-%d') }}" required>
+                        </td>
+                        <td>
+                          <input type="text" name="purpose" class="form-control form-control-sm" value="{{ r.purpose }}" required>
+                        </td>
+                        <td class="text-end">
+                          <input type="number" step="0.01" name="debit" class="form-control form-control-sm text-end" value="{{ '%.2f' % r.debit }}">
+                        </td>
+                        <td class="text-end">
+                          <input type="number" step="0.01" name="credit" class="form-control form-control-sm text-end" value="{{ '%.2f' % r.credit }}">
+                        </td>
+                        <td class="text-end">
+                          <input type="text" class="form-control form-control-sm text-end" value="{{ '%.2f' % r.balance }}" disabled>
+                        </td>
+                        <td>
+                          <input type="text" name="comments" class="form-control form-control-sm" value="{{ r.comments }}">
+                        </td>
+                        <td class="nowrap">
+                          <button class="btn btn-sm btn-success">Save</button>
+                          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleEdit({{ r.id }})">Cancel</button>
+                        </td>
+                      </form>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="7" class="text-center text-muted">No entries.</td></tr>
+                {% endif %}
+              </tbody>
+              {% if rows %}
+              <tfoot>
+                <tr class="table-secondary">
+                  <th colspan="2" class="text-end">Totals</th>
+                  <th class="text-end">₹{{ '%.2f' % totals.debit }}</th>
+                  <th class="text-end">₹{{ '%.2f' % totals.credit }}</th>
+                  <th class="text-end">₹{{ '%.2f' % totals.closing }}</th>
+                  <th></th>
+                  <th></th>
+                </tr>
+              </tfoot>
+              {% endif %}
+            </table>
+          </div>
+
+          <div class="text-end">
+            <form class="d-inline" method="get" action="{{ url_for('loan_ledger.download_pdf') }}">
+              {% if start %}<input type="hidden" name="start" value="{{ start.isoformat() }}">{% endif %}
+              {% if end %}<input type="hidden" name="end" value="{{ end.isoformat() }}">{% endif %}
+              <button class="btn btn-outline-primary">Download PDF</button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  function toggleEdit(id) {
+    const disp = document.getElementById('row-display-' + id);
+    const edit = document.getElementById('row-edit-' + id);
+    if (!disp || !edit) return;
+    const isHidden = edit.style.display === 'none';
+    edit.style.display = isHidden ? '' : 'none';
+    disp.style.display = isHidden ? 'none' : '';
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
