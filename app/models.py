@@ -395,3 +395,15 @@ class CompanyStock(db.Model):
 
     def __repr__(self):
         return f"<CompanyStock {self.id} {self.warehouse} {self.commodity}>"
+
+class LoanLedger(db.Model):
+    __tablename__ = "loan_ledger"
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    purpose = db.Column(db.String(255), nullable=False)
+    debit = db.Column(db.Float, default=0.0)    # Outflow (payment made)
+    credit = db.Column(db.Float, default=0.0)   # Inflow (sanction/top-up/refund)
+    comments = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
