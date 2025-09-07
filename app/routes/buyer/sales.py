@@ -141,6 +141,7 @@ def _avg_price_anunay(commodity: str | None, quality: str | None) -> float:
         StockData.stockist_name == "ANUNAY AGRO",
         StockData.commodity == commodity
     )
+    # Match quality exactly as stored (None vs string)
     if quality is None:
         q = q.filter(StockData.quality.is_(None))
     else:
@@ -154,6 +155,73 @@ def _avg_price_anunay(commodity: str | None, quality: str | None) -> float:
     if not total_qty or float(total_qty) == 0.0:
         return 0.0
     return float(total_cost) / float(total_qty)
+
+
+# ---- Repayment helpers (ANUNAY AGRO only) ----
+def _is_anunay(name: str | None) -> bool:
+    return (name or "").strip().upper() == "ANUNAY AGRO"
+
+
+def _repayment_amount_for_sale(sale: BuyerSale) -> float:
+    avg_price = _avg_price_anunay(sale.commodity, sale.quality)
+    return round((sale.quantity or 0.0) * avg_price, 2)
+
+
+def _find_repayment_for_sale(
+    when: date,
+    warehouse: str | None,
+    commodity: str | None,
+    stockist_name: str | None,
+):
+    """
+    Try to find a repayment row for this sale.
+    We intentionally do NOT include amount in the fingerprint because it
+    may change when the sale is edited.
+    """
+    return StockistLoanRepayment.query.filter(
+        StockistLoanRepayment.date == when,
+        StockistLoanRepayment.warehouse == (warehouse or ""),
+        StockistLoanRepayment.commodity == (commodity or ""),
+        StockistLoanRepayment.stockist_name == (stockist_name or ""),
+    ).first()
+
+
+def _ensure_repayment_for_sale(sale: BuyerSale):
+    """Create or update repayment (ANUNAY AGRO only)."""
+    if not _is_anunay(sale.stockist_name):
+        return
+
+    amount = _repayment_amount_for_sale(sale)
+    if amount <= 0:
+        # If a zero/negative computed amount, remove any existing repayment
+        rep = _find_repayment_for_sale(sale.date, sale.warehouse, sale.commodity, "ANUNAY AGRO")
+        if rep:
+            db.session.delete(rep)
+        return
+
+    rep = _find_repayment_for_sale(sale.date, sale.warehouse, sale.commodity, "ANUNAY AGRO")
+    if not rep:
+        rep = StockistLoanRepayment(
+            date=sale.date,
+            warehouse=sale.warehouse or "",
+            commodity=sale.commodity or "",
+            stockist_name="ANUNAY AGRO",
+            amount=amount,
+        )
+        db.session.add(rep)
+    else:
+        rep.date = sale.date
+        rep.warehouse = sale.warehouse or ""
+        rep.commodity = sale.commodity or ""
+        rep.stockist_name = "ANUNAY AGRO"
+        rep.amount = amount
+
+
+def _delete_repayment_for_sale(sale: BuyerSale):
+    """Delete repayment row for this sale (best effort)."""
+    rep = _find_repayment_for_sale(sale.date, sale.warehouse, sale.commodity, "ANUNAY AGRO")
+    if rep:
+        db.session.delete(rep)
 
 
 # ---------- routes ----------
@@ -210,27 +278,15 @@ def save_sale():
         stockist_name=stockist_name or None,
     )
     db.session.add(sale)
-    db.session.flush()
+    db.session.flush()  # ensure sale.id
 
     # Mirror StockExit
     _ensure_stockexit_for_sale(sale)
-
-    # NEW: Auto-create StockistLoanRepayment if stockist is ANUNAY AGRO
-    if (sale.stockist_name or "").strip().upper() == "ANUNAY AGRO":
-        avg_price = _avg_price_anunay(sale.commodity, sale.quality)
-        amount = round((sale.quantity or 0.0) * avg_price, 2)
-        if amount > 0:
-            repayment = StockistLoanRepayment(
-                date=sale.date,
-                warehouse=sale.warehouse or "",
-                commodity=sale.commodity or "",
-                stockist_name="ANUNAY AGRO",
-                amount=amount,
-            )
-            db.session.add(repayment)
+    # Mirror Repayment (ANUNAY AGRO only)
+    _ensure_repayment_for_sale(sale)
 
     db.session.commit()
-    flash("Sale saved and stock exit recorded.", "success")
+    flash("Sale saved, stock exit & repayment synced.", "success")
     return redirect(url_for("sales.list_sales"))
 
 
@@ -268,6 +324,7 @@ def list_sales():
 def update_sale(sale_id: int):
     sale = BuyerSale.query.get_or_404(sale_id)
 
+    # Snapshot old values to locate existing child rows
     old = dict(
         date=sale.date,
         warehouse=sale.warehouse or "",
@@ -277,6 +334,7 @@ def update_sale(sale_id: int):
         quantity=sale.quantity,
     )
 
+    # Apply incoming edits
     sale.date = _parse_date(request.form.get("date"), default=sale.date) or sale.date
     sale.rst_no = (request.form.get("rst_no") or sale.rst_no).strip()
     sale.commodity = (request.form.get("commodity") or sale.commodity).strip()
@@ -291,10 +349,12 @@ def update_sale(sale_id: int):
     sale.cost, sale.net_cost = _compute_costs(qty, rate, handling)
     sale.handling_charge = handling
 
-    stockist_name = sale.stockist_name or (request.form.get("stockist_name") or None)
+    # If stockist_name is editable, capture it; else keep existing
+    stockist_name = (request.form.get("stockist_name") or sale.stockist_name or None)
     sale.stockist_name = stockist_name
     mobile = _stockist_mobile(sale.stockist_name)
 
+    # ---- Sync StockExit (update or recreate) ----
     sx = _find_matching_stockexit(
         when=old["date"],
         stockist_name=old["stockist_name"],
@@ -320,16 +380,55 @@ def update_sale(sale_id: int):
     else:
         _ensure_stockexit_for_sale(sale)
 
+    # ---- Sync Repayment (ANUNAY AGRO only) ----
+    was_anunay = _is_anunay(old["stockist_name"])
+    is_anunay = _is_anunay(sale.stockist_name)
+
+    if was_anunay and not is_anunay:
+        # Previously had repayment; remove it
+        dummy_sale_old = type("S", (), {
+            "date": old["date"],
+            "warehouse": old["warehouse"],
+            "commodity": old["commodity"]
+        })()
+        _delete_repayment_for_sale(dummy_sale_old)  # delete by old fingerprint
+    elif is_anunay:
+        # Update existing repayment matching *old* fingerprint, or create if missing
+        # First try to find using old fingerprint
+        rep = _find_repayment_for_sale(old["date"], old["warehouse"], old["commodity"], "ANUNAY AGRO")
+        amount = _repayment_amount_for_sale(sale)
+        if amount <= 0:
+            if rep:
+                db.session.delete(rep)
+        else:
+            if not rep:
+                # Create fresh
+                _ensure_repayment_for_sale(sale)
+            else:
+                # Update in place to new values
+                rep.date = sale.date
+                rep.warehouse = sale.warehouse or ""
+                rep.commodity = sale.commodity or ""
+                rep.stockist_name = "ANUNAY AGRO"
+                rep.amount = amount
+
     db.session.commit()
-    flash("Sale updated.", "success")
+    flash("Sale updated; stock exit & repayment synced.", "success")
     return redirect(url_for("sales.list_sales"))
 
 
 @bp.post("/<int:sale_id>/delete")
 def delete_sale(sale_id: int):
     sale = BuyerSale.query.get_or_404(sale_id)
+
+    # Delete StockExit
     _delete_stockexit_for_sale(sale)
+
+    # Delete repayment (if ANUNAY AGRO)
+    if _is_anunay(sale.stockist_name):
+        _delete_repayment_for_sale(sale)
+
     db.session.delete(sale)
     db.session.commit()
-    flash("Sale deleted.", "success")
+    flash("Sale deleted; stock exit & repayment removed.", "success")
     return redirect(url_for("sales.list_sales"))
