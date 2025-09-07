@@ -3,9 +3,12 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from sqlalchemy import and_
+from sqlalchemy import func
 from app import db
-from app.models import Buyer, BuyerSale, BuyerPayment, Stockist, StockExit
+from app.models import (
+    Buyer, BuyerSale, BuyerPayment,
+    Stockist, StockExit, StockData, StockistLoanRepayment
+)
 
 bp = Blueprint("sales", __name__, url_prefix="/buyer/sales")
 
@@ -19,15 +22,18 @@ def _parse_date(s: str | None, default: date | None = None) -> date | None:
     except ValueError:
         return default
 
+
 def _f(x, default=0.0) -> float:
     try:
         return float(x)
     except Exception:
         return default
 
+
 def _q(x) -> float:
     """quantity parser with 3-decimals typical for kg"""
     return _f(x, 0.0)
+
 
 def _compute_costs(qty: float, rate: float, handling: float) -> tuple[float, float]:
     cost = qty * rate
@@ -50,12 +56,7 @@ def _find_matching_stockexit(
     quality: str | None,
     quantity: float | None,
 ):
-    """
-    Try to locate the StockExit row that was created for a given sale.
-    We match on the combination we originally wrote:
-    (date, stockist_name, warehouse, commodity, quality, quantity).
-    If multiple match (unlikely), return the first.
-    """
+    """Find StockExit row corresponding to a sale (best effort)."""
     q = StockExit.query.filter(
         StockExit.date == when,
         StockExit.stockist_name == (stockist_name or ""),
@@ -68,10 +69,7 @@ def _find_matching_stockexit(
 
 
 def _ensure_stockexit_for_sale(sale: BuyerSale):
-    """
-    Create or update the StockExit row corresponding to this sale.
-    Mirrors quantity, rate, cost, handling, net_cost from BuyerSale.
-    """
+    """Create or update StockExit row mirroring BuyerSale."""
     mobile = _stockist_mobile(sale.stockist_name)
 
     sx = _find_matching_stockexit(
@@ -93,10 +91,10 @@ def _ensure_stockexit_for_sale(sale: BuyerSale):
             quantity=sale.quantity,
             reduction=0.0,
             net_qty=sale.quantity,
-            rate=sale.rate,                   # <-- mirror
-            cost=sale.cost,                   # <-- mirror
-            handling=sale.handling_charge,    # <-- mirror
-            net_cost=sale.net_cost,           # <-- mirror
+            rate=sale.rate,
+            cost=sale.cost,
+            handling=sale.handling_charge,
+            net_cost=sale.net_cost,
             quality=sale.quality,
         )
         db.session.add(sx)
@@ -109,15 +107,15 @@ def _ensure_stockexit_for_sale(sale: BuyerSale):
         sx.quantity = sale.quantity
         sx.reduction = 0.0
         sx.net_qty = sale.quantity
-        sx.rate = sale.rate                 # <-- mirror
-        sx.cost = sale.cost                 # <-- mirror
-        sx.handling = sale.handling_charge  # <-- mirror
-        sx.net_cost = sale.net_cost         # <-- mirror
+        sx.rate = sale.rate
+        sx.cost = sale.cost
+        sx.handling = sale.handling_charge
+        sx.net_cost = sale.net_cost
         sx.quality = sale.quality
 
 
 def _delete_stockexit_for_sale(sale: BuyerSale):
-    """Delete the StockExit row that matches the sale's current values (best-effort)."""
+    """Delete StockExit row matching a sale (best effort)."""
     sx = _find_matching_stockexit(
         when=sale.date,
         stockist_name=sale.stockist_name or "",
@@ -130,11 +128,37 @@ def _delete_stockexit_for_sale(sale: BuyerSale):
         db.session.delete(sx)
 
 
-# ---------- routes ----------
+def _avg_price_anunay(commodity: str | None, quality: str | None) -> float:
+    """
+    Weighted average price for ANUNAY AGRO from StockData:
+        avg_price = (sum(cost) / sum(quantity))
+    Returns 0.0 if no data.
+    """
+    if not commodity:
+        return 0.0
 
+    q = StockData.query.filter(
+        StockData.stockist_name == "ANUNAY AGRO",
+        StockData.commodity == commodity
+    )
+    if quality is None:
+        q = q.filter(StockData.quality.is_(None))
+    else:
+        q = q.filter(StockData.quality == quality)
+
+    total_qty, total_cost = q.with_entities(
+        func.coalesce(func.sum(StockData.quantity), 0.0),
+        func.coalesce(func.sum(StockData.cost), 0.0),
+    ).first() or (0.0, 0.0)
+
+    if not total_qty or float(total_qty) == 0.0:
+        return 0.0
+    return float(total_cost) / float(total_qty)
+
+
+# ---------- routes ----------
 @bp.get("/add")
 def add_sale_form():
-    """Render add form."""
     buyers = Buyer.query.order_by(Buyer.buyer_name.asc()).all()
     stockists = Stockist.query.order_by(Stockist.name.asc()).all()
     today = date.today().strftime("%Y-%m-%d")
@@ -148,8 +172,6 @@ def add_sale_form():
 
 @bp.post("/add")
 def save_sale():
-    """Create a sale + mirror a StockExit row."""
-    # Required fields
     buyer_id = request.form.get("buyer_id")
     buyer = Buyer.query.get(int(buyer_id)) if buyer_id else None
     if not buyer:
@@ -163,15 +185,12 @@ def save_sale():
         flash("RST No and Commodity are required.", "danger")
         return redirect(url_for("sales.add_sale"))
 
-    # Optional / numeric fields
     warehouse = (request.form.get("warehouse") or "").strip()
     quality = (request.form.get("quality") or "").strip() or None
     qty = _q(request.form.get("quantity"))
     rate = _f(request.form.get("rate"))
     handling = _f(request.form.get("handling_charge"))
     cost, net = _compute_costs(qty, rate, handling)
-
-    # NEW: stockist chosen for this sale
     stockist_name = (request.form.get("stockist_name") or "").strip()
 
     sale = BuyerSale(
@@ -190,12 +209,25 @@ def save_sale():
         quality=quality,
         stockist_name=stockist_name or None,
     )
-
     db.session.add(sale)
-    db.session.flush()  # have sale.id
+    db.session.flush()
 
     # Mirror StockExit
     _ensure_stockexit_for_sale(sale)
+
+    # NEW: Auto-create StockistLoanRepayment if stockist is ANUNAY AGRO
+    if (sale.stockist_name or "").strip().upper() == "ANUNAY AGRO":
+        avg_price = _avg_price_anunay(sale.commodity, sale.quality)
+        amount = round((sale.quantity or 0.0) * avg_price, 2)
+        if amount > 0:
+            repayment = StockistLoanRepayment(
+                date=sale.date,
+                warehouse=sale.warehouse or "",
+                commodity=sale.commodity or "",
+                stockist_name="ANUNAY AGRO",
+                amount=amount,
+            )
+            db.session.add(repayment)
 
     db.session.commit()
     flash("Sale saved and stock exit recorded.", "success")
@@ -204,12 +236,9 @@ def save_sale():
 
 @bp.get("")
 def list_sales():
-    """List + filter."""
     buyers = Buyer.query.order_by(Buyer.buyer_name.asc()).all()
-
     q = BuyerSale.query
 
-    # Filters (match your list_sales.html)
     mobile = request.args.get("mobile") or ""
     commodity = request.args.get("commodity") or ""
     quality = request.args.get("quality") or ""
@@ -232,19 +261,13 @@ def list_sales():
 
     q = q.order_by(BuyerSale.date.desc(), BuyerSale.id.desc())
     sales = q.all()
-
     return render_template("buyer/list_sales.html", buyers=buyers, sales=sales)
 
 
 @bp.post("/<int:sale_id>/update")
 def update_sale(sale_id: int):
-    """
-    Inline update from list view. Recomputes cost/net_cost and keeps
-    the StockExit row in sync (best-effort match by old values).
-    """
     sale = BuyerSale.query.get_or_404(sale_id)
 
-    # Keep a snapshot of OLD values for locating the StockExit row
     old = dict(
         date=sale.date,
         warehouse=sale.warehouse or "",
@@ -254,7 +277,6 @@ def update_sale(sale_id: int):
         quantity=sale.quantity,
     )
 
-    # Apply edits
     sale.date = _parse_date(request.form.get("date"), default=sale.date) or sale.date
     sale.rst_no = (request.form.get("rst_no") or sale.rst_no).strip()
     sale.commodity = (request.form.get("commodity") or sale.commodity).strip()
@@ -269,8 +291,10 @@ def update_sale(sale_id: int):
     sale.cost, sale.net_cost = _compute_costs(qty, rate, handling)
     sale.handling_charge = handling
 
-    # Update StockExit:
-    # 1) Try to find using the OLD fingerprint and update it to the NEW values.
+    stockist_name = sale.stockist_name or (request.form.get("stockist_name") or None)
+    sale.stockist_name = stockist_name
+    mobile = _stockist_mobile(sale.stockist_name)
+
     sx = _find_matching_stockexit(
         when=old["date"],
         stockist_name=old["stockist_name"],
@@ -279,13 +303,6 @@ def update_sale(sale_id: int):
         quality=old["quality"],
         quantity=old["quantity"],
     )
-
-    # Ensure we have stockist_name persisted (if you decide to make it editable later, pull from form)
-    stockist_name = sale.stockist_name or (request.form.get("stockist_name") or None)
-    sale.stockist_name = stockist_name
-
-    mobile = _stockist_mobile(sale.stockist_name)
-
     if sx:
         sx.date = sale.date
         sx.warehouse = sale.warehouse or ""
@@ -295,10 +312,10 @@ def update_sale(sale_id: int):
         sx.quantity = sale.quantity
         sx.reduction = 0.0
         sx.net_qty = sale.quantity
-        sx.rate = sale.rate                 # <-- mirror instead of 0.0
-        sx.cost = sale.cost                 # <-- mirror instead of 0.0
-        sx.handling = sale.handling_charge  # <-- mirror instead of 0.0
-        sx.net_cost = sale.net_cost         # <-- mirror instead of 0.0
+        sx.rate = sale.rate
+        sx.cost = sale.cost
+        sx.handling = sale.handling_charge
+        sx.net_cost = sale.net_cost
         sx.quality = sale.quality
     else:
         _ensure_stockexit_for_sale(sale)
@@ -310,14 +327,9 @@ def update_sale(sale_id: int):
 
 @bp.post("/<int:sale_id>/delete")
 def delete_sale(sale_id: int):
-    """
-    Delete a sale and its mirrored StockExit (best-effort by current values).
-    """
     sale = BuyerSale.query.get_or_404(sale_id)
     _delete_stockexit_for_sale(sale)
-
     db.session.delete(sale)
     db.session.commit()
     flash("Sale deleted.", "success")
     return redirect(url_for("sales.list_sales"))
-
