@@ -94,11 +94,13 @@
   
   <span>DEBUG: {{ total_quantity }}</span>
 
-
 <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
   <strong>Total Quantity (filtered):</strong>
-  <span>{{ (total_quantity | default(0)) | float | round(2) }}</span>
+  <span>{{ total_quantity_str }}</span>
 </div>
+
+<!-- Temporary raw debug: -->
+<div>DEBUG raw: {{ total_quantity }}</div>
 
 
   <div class="table-responsive">
