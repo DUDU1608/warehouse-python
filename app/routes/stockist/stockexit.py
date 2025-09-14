@@ -109,18 +109,21 @@ def total_reduction():
 # ---------- List ----------
 from sqlalchemy import func
 
+# app/routes/stockist/stockexit.py
+
+from sqlalchemy import func
+
 @bp.route('/list')
 def list_stock_exit():
-    base = StockExit.query  # don't mutate it; reuse for both list & sum
+    base = StockExit.query
 
-    start_date = request.args.get('start_date')
-    end_date   = request.args.get('end_date')
+    start_date    = request.args.get('start_date')
+    end_date      = request.args.get('end_date')
     stockist_name = request.args.get('stockist_name')
-    warehouse = request.args.get('warehouse')
-    commodity = request.args.get('commodity')
-    quality   = request.args.get('quality')
+    warehouse     = request.args.get('warehouse')
+    commodity     = request.args.get('commodity')
+    quality       = request.args.get('quality')
 
-    # Build a list of filters once, then apply to both queries
     filters = []
     if start_date and end_date:
         filters.append(StockExit.date.between(start_date, end_date))
@@ -133,28 +136,32 @@ def list_stock_exit():
     if quality:
         filters.append(StockExit.quality == quality)
 
-    # Data rows
-    query = base.filter(*filters)
-    stockexits = query.order_by(StockExit.date.desc()).all()
+    # Data rows (don’t reuse this query for the sum)
+    stockexits = base.filter(*filters).order_by(StockExit.date.desc()).all()
 
-    # Total quantity (use a fresh query so ORDER BY/grouping elsewhere never interferes)
-    total_q = db.session.query(func.coalesce(func.sum(StockExit.quantity), 0.0)).filter(*filters)
-    total_quantity = float(total_q.scalar() or 0.0)
-    total_quantity_str = f"{total_quantity:,.2f}"
+    # ✅ Postgres-safe aggregate using a fresh session query
+    sum_query = db.session.query(func.coalesce(func.sum(StockExit.quantity), 0.0)).filter(*filters)
+    sum_quantity = float(sum_query.scalar() or 0.0)     # cast for safe Jinja rendering
+    sum_quantity_str = f"{sum_quantity:,.2f}"
+
+    # Quick server-log to confirm it’s computed
+    print("[/stockexit/list] sum_quantity =", sum_quantity)
+
+    # Optional probe to prove the route computes the number (no template involved)
+    if request.args.get('probe') == '1':
+        # Visit: /stockexit/list?probe=1&start_date=...&end_date=...&warehouse=... etc.
+        return {"sum_quantity": sum_quantity}
 
     stockist_names = [s[0] for s in db.session.query(StockExit.stockist_name).distinct()]
     warehouses     = [w[0] for w in db.session.query(StockExit.warehouse).distinct()]
-
-    # DIAGNOSTIC: emit to server logs so we know it’s computed
-    print("DEBUG total_quantity:", total_quantity)
 
     return render_template(
         "stockist/list_stock_exit.html",
         stockexits=stockexits,
         stockist_names=stockist_names,
         warehouses=warehouses,
-        total_quantity=total_quantity,
-        total_quantity_str=total_quantity_str,
+        sum_quantity=sum_quantity,           # pass raw
+        sum_quantity_str=sum_quantity_str,   # pass formatted
     )
 
 # ---------- Export Excel ----------
