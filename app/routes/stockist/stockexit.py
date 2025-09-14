@@ -107,44 +107,54 @@ def total_reduction():
     return jsonify({"total_reduction": "NIL" if total is None else round(float(total), 2)})
 
 # ---------- List ----------
+from sqlalchemy import func
+
 @bp.route('/list')
 def list_stock_exit():
-    query = StockExit.query
+    base = StockExit.query  # don't mutate it; reuse for both list & sum
+
     start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
+    end_date   = request.args.get('end_date')
     stockist_name = request.args.get('stockist_name')
     warehouse = request.args.get('warehouse')
     commodity = request.args.get('commodity')
-    quality = request.args.get('quality')
+    quality   = request.args.get('quality')
 
+    # Build a list of filters once, then apply to both queries
+    filters = []
     if start_date and end_date:
-        query = query.filter(StockExit.date.between(start_date, end_date))
+        filters.append(StockExit.date.between(start_date, end_date))
     if stockist_name:
-        query = query.filter(StockExit.stockist_name == stockist_name)
+        filters.append(StockExit.stockist_name == stockist_name)
     if warehouse:
-        query = query.filter(StockExit.warehouse == warehouse)
+        filters.append(StockExit.warehouse == warehouse)
     if commodity:
-        query = query.filter(StockExit.commodity == commodity)
+        filters.append(StockExit.commodity == commodity)
     if quality:
-        query = query.filter(StockExit.quality == quality)
+        filters.append(StockExit.quality == quality)
 
-    # NEW: total of quantity over the filtered set
-    total_quantity = (
-        query.with_entities(func.coalesce(func.sum(StockExit.quantity), 0))
-             .scalar()
-        or 0
-    )
-
+    # Data rows
+    query = base.filter(*filters)
     stockexits = query.order_by(StockExit.date.desc()).all()
+
+    # Total quantity (use a fresh query so ORDER BY/grouping elsewhere never interferes)
+    total_q = db.session.query(func.coalesce(func.sum(StockExit.quantity), 0.0)).filter(*filters)
+    total_quantity = float(total_q.scalar() or 0.0)
+    total_quantity_str = f"{total_quantity:,.2f}"
+
     stockist_names = [s[0] for s in db.session.query(StockExit.stockist_name).distinct()]
-    warehouses = [w[0] for w in db.session.query(StockExit.warehouse).distinct()]
+    warehouses     = [w[0] for w in db.session.query(StockExit.warehouse).distinct()]
+
+    # DIAGNOSTIC: emit to server logs so we know it’s computed
+    print("DEBUG total_quantity:", total_quantity)
 
     return render_template(
-        'stockist/list_stock_exit.html',
+        "stockist/list_stock_exit.html",
         stockexits=stockexits,
         stockist_names=stockist_names,
         warehouses=warehouses,
-        total_quantity=total_quantity,          # <-- pass to template
+        total_quantity=total_quantity,
+        total_quantity_str=total_quantity_str,
     )
 
 # ---------- Export Excel ----------
