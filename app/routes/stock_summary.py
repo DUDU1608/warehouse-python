@@ -75,7 +75,7 @@ def stock_summary():
         if selected_is_maize:
             base_total = self_storage + company_purchase
             if base_total > 0:
-                threshold = 0.0985 * base_total
+                threshold = 0.985 * base_total
                 if stock_exit >= threshold:
                     net_quantity = 0
 
