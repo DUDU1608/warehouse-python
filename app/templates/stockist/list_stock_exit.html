@@ -90,6 +90,7 @@
   <div class="mb-2 d-flex justify-content-between">
     <a href="{{ url_for('stockexit.export_stock_exit_excel') }}" class="btn btn-outline-success btn-sm">Export Excel</a>
     <a href="{{ url_for('stockexit.add_stock_exit') }}" class="btn btn-outline-primary btn-sm">+ Add Stock Exit</a>
+    <a href="/stockist/dashboard" class="btn btn-outline-dark btn-sm float-end">← Back to Dashboard</a>
   </div>
   
  
@@ -98,9 +99,6 @@
   <strong>Total Quantity (filtered):</strong>
   <span>{{ total_quantity_str | default('0.00', true) }}</span>
 </div>
-
-<!-- TEMP DEBUG (remove later) -->
-<div>DBG: raw={{ total_quantity | default('undef', true) }}, rows={{ stockexits|length }}, {{ sentinel }}</div>
 
 
   <div class="table-responsive">
