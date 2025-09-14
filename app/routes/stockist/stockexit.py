@@ -6,6 +6,8 @@ from app import db
 from app.models import StockExit, Stockist
 from datetime import datetime
 import pandas as pd
+from sqlalchemy import func
+
 
 bp = Blueprint('stockexit', __name__, url_prefix='/stockexit')
 
@@ -126,14 +128,23 @@ def list_stock_exit():
     if quality:
         query = query.filter(StockExit.quality == quality)
 
+    # NEW: total of quantity over the filtered set
+    total_quantity = (
+        query.with_entities(func.coalesce(func.sum(StockExit.quantity), 0))
+             .scalar()
+        or 0
+    )
+
     stockexits = query.order_by(StockExit.date.desc()).all()
     stockist_names = [s[0] for s in db.session.query(StockExit.stockist_name).distinct()]
     warehouses = [w[0] for w in db.session.query(StockExit.warehouse).distinct()]
+
     return render_template(
         'stockist/list_stock_exit.html',
         stockexits=stockexits,
         stockist_names=stockist_names,
-        warehouses=warehouses
+        warehouses=warehouses,
+        total_quantity=total_quantity,          # <-- pass to template
     )
 
 # ---------- Export Excel ----------
