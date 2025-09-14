@@ -107,16 +107,10 @@ def total_reduction():
     return jsonify({"total_reduction": "NIL" if total is None else round(float(total), 2)})
 
 # ---------- List ----------
-from sqlalchemy import func
-
-# app/routes/stockist/stockexit.py
-
-from sqlalchemy import func
 
 @bp.route('/list')
 def list_stock_exit():
-    base = StockExit.query
-
+    # --- filters ---
     start_date    = request.args.get('start_date')
     end_date      = request.args.get('end_date')
     stockist_name = request.args.get('stockist_name')
@@ -136,32 +130,35 @@ def list_stock_exit():
     if quality:
         filters.append(StockExit.quality == quality)
 
-    # Data rows (don’t reuse this query for the sum)
-    stockexits = base.filter(*filters).order_by(StockExit.date.desc()).all()
+    # --- list rows ---
+    stockexits = StockExit.query.filter(*filters).order_by(StockExit.date.desc()).all()
 
-    # ✅ Postgres-safe aggregate using a fresh session query
-    sum_query = db.session.query(func.coalesce(func.sum(StockExit.quantity), 0.0)).filter(*filters)
-    sum_quantity = float(sum_query.scalar() or 0.0)     # cast for safe Jinja rendering
-    sum_quantity_str = f"{sum_quantity:,.2f}"
+    # --- sum of Quantity over filtered set (use a fresh query) ---
+    total_quantity = float(
+        db.session.query(func.coalesce(func.sum(StockExit.quantity), 0.0))
+        .filter(*filters)
+        .scalar() or 0.0
+    )
+    total_quantity_str = f"{total_quantity:,.2f}"
 
-    # Quick server-log to confirm it’s computed
-    print("[/stockexit/list] sum_quantity =", sum_quantity)
-
-    # Optional probe to prove the route computes the number (no template involved)
+    # --- JSON probe (prove route is updated): /stockexit/list?probe=1&... ---
     if request.args.get('probe') == '1':
-        # Visit: /stockexit/list?probe=1&start_date=...&end_date=...&warehouse=... etc.
-        return {"sum_quantity": sum_quantity}
+        return {"total_quantity": total_quantity}
 
     stockist_names = [s[0] for s in db.session.query(StockExit.stockist_name).distinct()]
     warehouses     = [w[0] for w in db.session.query(StockExit.warehouse).distinct()]
+
+    # tiny log to server
+    print("[/stockexit/list] total_quantity =", total_quantity)
 
     return render_template(
         "stockist/list_stock_exit.html",
         stockexits=stockexits,
         stockist_names=stockist_names,
         warehouses=warehouses,
-        sum_quantity=sum_quantity,           # pass raw
-        sum_quantity_str=sum_quantity_str,   # pass formatted
+        total_quantity=total_quantity,
+        total_quantity_str=total_quantity_str,
+        sentinel="stockexit-list-v3"
     )
 
 # ---------- Export Excel ----------
