@@ -96,11 +96,12 @@
 
 <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
   <strong>Total Quantity (filtered):</strong>
-  <span>{{ total_quantity_str }}</span>
+  <span>{{ sum_quantity_str | default('0.00', true) }}</span>
 </div>
 
-<!-- Temporary raw debug: -->
-<div>DEBUG raw: {{ total_quantity }}</div>
+<!-- TEMP DEBUG: keep until you see numbers -->
+<div>DBG raw: [{{ sum_quantity | default('undef', true) }}]</div>
+<div id="sentinel" data-view="stockexit-list-v2"></div>
 
 
   <div class="table-responsive">
